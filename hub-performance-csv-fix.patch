@@ -1,0 +1,140 @@
+--- index.original.html	2026-09-07 05:39:43.601272591 +0000
++++ index.html	2026-09-07 05:52:28.940737647 +0000
+@@ -920,7 +920,7 @@
+                 <button onclick="fetchData()" class="px-2.5 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                     <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> <span class="hidden sm:inline">Refresh</span>
+                 </button>
+-                <button onclick="exportCSV()" class="px-2.5 md:px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);">
++                <button onclick="handleHeaderExportCSV()" class="px-2.5 md:px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);">
+                     <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export CSV</span>
+                 </button>
+                 <label class="reduceMotionToggle st-reduceMotionToggleBtn" title="Toggle Dark Mode" aria-label="Toggle Dark Mode" for="themeToggleCheckbox">
+@@ -1499,7 +1499,7 @@
+                         <canvas id="hubTodayChart"></canvas>
+                     </div>
+                     <div id="hubTodayChartEmpty" class="hidden p-8 text-center">
+-                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hubs with issues in this group yet.</p>
++                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hubs with issues in this group yet. If you expect hubs here, open the browser console — unmatched hub names are logged with a warning.</p>
+                     </div>
+                 </div>
+ 
+@@ -1549,7 +1549,7 @@
+                         </table>
+                     </div>
+                     <div id="hubLeaderboardEmpty" class="hidden p-8 text-center">
+-                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hub remark data yet for this group.</p>
++                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hub remark data yet for this group. If you expect hubs here, open the browser console — unmatched hub names are logged with a warning.</p>
+                     </div>
+                 </div>
+ 
+@@ -2100,6 +2100,11 @@
+ 
+ // ==================== THEME TOGGLE ====================
+ let currentTheme = localStorage.getItem('carrybee-theme') || 'light';
++// Tracks which tab is active so the header's single "Export CSV" button can
++// route to the right exporter (see handleHeaderExportCSV()) instead of
++// always exporting Issue Tracker data regardless of which tab/date-range
++// filters are actually visible on screen.
++let currentView = 'tracker';
+ document.documentElement.setAttribute('data-theme', currentTheme);
+ updateThemeIcon();
+ 
+@@ -4121,7 +4126,16 @@
+ function getOpenedAtISO(issue) {
+     if (!issue.date) return null;
+     const t = issue.timestamp || '00:00:00';
+-    const d = new Date(`${issue.date}T${t}Z`);
++    // issue.date/issue.timestamp come from the sheet as Asia/Dhaka (UTC+6)
++    // local wall-clock values, NOT UTC — unlike progressAt/kamRemarkAt/etc,
++    // which are true UTC ISO strings from the DB. Building this with a "Z"
++    // (UTC) suffix mislabeled local time as UTC, so every downstream
++    // Asia/Dhaka conversion (the "Submitted" column, the date-range filters
++    // on Tracker/Pending/Hub Performance, and both CSV exports) silently
++    // added another +6h on top, bumping any issue opened from ~6pm onward
++    // Dhaka time onto the next calendar day. Using the correct +06:00
++    // offset here fixes date filtering/CSV everywhere at the source.
++    const d = new Date(`${issue.date}T${t}+06:00`);
+     return isNaN(d.getTime()) ? null : d.toISOString();
+ }
+ 
+@@ -4149,12 +4163,51 @@
+     return String(hubName || '').trim().toLowerCase();
+ }
+ 
++// The real "hub" values coming from the sheet don't always match
++// HUB_CATEGORY_MAP's keys byte-for-byte — e.g. "Gazipur - Joydebpur" vs
++// "gazipur-joydebpur", double spaces, or a trailing "Hub"/"Branch". A plain
++// exact-match lookup silently drops any hub that doesn't format identically
++// out of every ISD/SUB/OSD-grouped view (the "Today's Issues vs Remarks"
++// chart and the Leaderboard both filter on getHubCategory === category),
++// even though the same hub shows up fine everywhere else (map, hub list,
++// CSV export) since those don't require a category match. Try a few common
++// formatting variants before giving up.
++function hubKeyVariants(hubName) {
++    const base = normalizeHubKey(hubName);
++    if (!base) return [];
++    const collapsed = base.replace(/\s+/g, ' ');
++    const hyphenSpaced = collapsed.replace(/\s*-\s*/g, '-'); // "gazipur - joydebpur" -> "gazipur-joydebpur"
++    const spaceHyphen = collapsed.replace(/-/g, ' ').replace(/\s+/g, ' ').trim(); // the reverse, in case the map key uses a space
++    const stripped = hyphenSpaced.replace(/\s*(hub|branch|office)\s*$/i, '').trim(); // drop a trailing "Hub"/"Branch"/"Office"
++    return Array.from(new Set([base, collapsed, hyphenSpaced, spaceHyphen, stripped].filter(Boolean)));
++}
++
++function lookupHubMap(map, hubName) {
++    for (const key of hubKeyVariants(hubName)) {
++        if (map[key]) return map[key];
++    }
++    return null;
++}
++
++// Logs each unmatched hub name once, so opening the browser console shows
++// exactly which strings are missing from HUB_CATEGORY_MAP — the fastest way
++// to diagnose an empty "Today's Issues" chart / Leaderboard for a group that
++// otherwise clearly has issues (visible in the map/leaderboard totals).
++const _unmappedHubsLogged = new Set();
+ function getHubCategory(hubName) {
+-    return HUB_CATEGORY_MAP[normalizeHubKey(hubName)] || null;
++    const result = lookupHubMap(HUB_CATEGORY_MAP, hubName);
++    if (!result) {
++        const trimmed = String(hubName || '').trim();
++        if (trimmed && trimmed !== '-' && trimmed.toLowerCase() !== 'unassigned' && !_unmappedHubsLogged.has(trimmed)) {
++            _unmappedHubsLogged.add(trimmed);
++            console.warn(`[Hub Performance] "${trimmed}" doesn't match any key in HUB_CATEGORY_MAP (tried: ${hubKeyVariants(trimmed).join(', ')}) — it won't appear in "Today's Issues vs Remarks" or the Leaderboard until the map is updated to include it.`);
++        }
++    }
++    return result;
+ }
+ 
+ function getHubDivision(hubName) {
+-    return HUB_DIVISION_MAP[normalizeHubKey(hubName)] || null;
++    return lookupHubMap(HUB_DIVISION_MAP, hubName);
+ }
+ 
+ // Returns milliseconds of [startMs, endMs) that fall inside the 10:00-19:00
+@@ -5389,6 +5442,7 @@
+ 
+ function switchView(view) {
+     if (isViewer() && view !== 'tracker') { showToast('View-only access — this section is not available.', 'warning'); return; }
++    currentView = view;
+     document.getElementById('view-tracker').classList.add('hidden');
+     document.getElementById('view-pending').classList.add('hidden');
+     document.getElementById('view-analytics').classList.add('hidden');
+@@ -5433,6 +5487,18 @@
+     return `"${str.replace(/"/g, '""')}"`;
+ }
+ 
++// Header "Export CSV" is a single always-visible button across every tab.
++// It used to hard-call exportCSV() (Issue Tracker) no matter what, so
++// exporting while on Hub Performance quietly gave you Tracker data with
++// none of the Hub Performance date/tag filters applied. Route it to
++// whichever tab's own exporter is actually on screen instead.
++function handleHeaderExportCSV() {
++    if (currentView === 'hub-performance') return exportHubPerformanceCSV();
++    if (currentView === 'performance') return exportPerformanceCSV();
++    if (currentView === 'pending') return exportCSV();
++    return exportCSV();
++}
++
+ function exportCSV() {
+     // Export matches whatever the Issue Tracker table is currently showing —
+     // same search box + status/tag/date/KAM-remark/responder/hub filters

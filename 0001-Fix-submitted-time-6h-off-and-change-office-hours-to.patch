@@ -1,0 +1,99 @@
+From 29fab428e1eeada105e19eed81f1b80105a382d6 Mon Sep 17 00:00:00 2001
+From: Nahid <nahid@carrybee.local>
+Date: Sun, 13 Sep 2026 06:52:48 +0000
+Subject: [PATCH] Fix submitted time (6h off) and change office hours to
+ 10AM-6PM
+
+- server.js nowParts(): issue_date/issue_time were derived straight from
+  the UTC iso string, but the dashboard reads them as Dhaka wall-clock
+  (+06:00). That mismatch made every ticket's Submitted time display
+  6 hours earlier than when it actually came in. Now shifts by +6h
+  before splitting so stored date/time are true Dhaka wall-clock,
+  matching what the dashboard already assumes.
+- index.html: OFFICE_START_HOUR/OFFICE_END_HOUR window changed from
+  10:00-19:00 to 10:00-18:00, so an issue at 10 AM follows up 2 hours
+  later and an issue at 6 PM (or after) follows up next day at 10 AM.
+  Updated the Performance tab help text and comments to match.
+---
+ index.html |  8 ++++----
+ server.js  | 24 +++++++++++++++---------
+ 2 files changed, 19 insertions(+), 13 deletions(-)
+
+diff --git a/index.html b/index.html
+index 84f2d5a..da25569 100644
+--- a/index.html
++++ b/index.html
+@@ -1338,7 +1338,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
+                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                     <p class="text-xs theme-transition" style="color: var(--text-muted);">
+                         <i class="fa-solid fa-circle-info mr-1"></i>
+-                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added. Office hours are 10:00 AM&ndash;7:00 PM (Asia/Dhaka); averages below split the elapsed time into office-hours vs non-office-hours.
++                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added. Office hours are 10:00 AM&ndash;6:00 PM (Asia/Dhaka); averages below split the elapsed time into office-hours vs non-office-hours.
+                     </p>
+                     <button onclick="exportPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
+                         <i class="fa-solid fa-download"></i> Export Performance CSV
+@@ -3663,7 +3663,7 @@ function formatTimestamp(iso) {
+ // +6h-shift technique officeMsInRange uses below) rather than the viewer's
+ // device clock/timezone, so it gives the same answer no matter what
+ // timezone a KAM's phone or laptop happens to be set to. Office hours here
+-// are the same 10:00-19:00 window used everywhere else in the app
++// are the same 10:00-18:00 window used everywhere else in the app
+ // (OFFICE_START_HOUR / OFFICE_END_HOUR), so there's only one "office hours"
+ // definition instead of two disagreeing ones.
+ function computeFollowupTime(remarkDate) {
+@@ -4209,7 +4209,7 @@ function getOpenedAtISO(issue) {
+ const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
+ const DAY_MS = 24 * 60 * 60 * 1000;
+ const OFFICE_START_HOUR = 10; // 10:00 AM
+-const OFFICE_END_HOUR = 19;   // 7:00 PM
++const OFFICE_END_HOUR = 18;   // 6:00 PM
+ 
+ // A hub's remark is considered "late" if it takes longer than this to arrive
+ // after an issue moves to In Progress. Adjust here if the team's SLA changes.
+@@ -4272,7 +4272,7 @@ function getHubDivision(hubName) {
+     return lookupHubMap(HUB_DIVISION_MAP, hubName);
+ }
+ 
+-// Returns milliseconds of [startMs, endMs) that fall inside the 10:00-19:00
++// Returns milliseconds of [startMs, endMs) that fall inside the 10:00-18:00
+ // Dhaka window, walking one calendar day at a time.
+ function officeMsInRange(startMs, endMs) {
+     if (startMs == null || endMs == null || endMs <= startMs) return 0;
+diff --git a/server.js b/server.js
+index 81b25ee..0bcaf0c 100644
+--- a/server.js
++++ b/server.js
+@@ -84,15 +84,21 @@ function rowToIssue(row) {
+ 
+ function nowParts() {
+   const now = new Date();
+-  // Both date and time MUST come from the same UTC-based string. Splitting
+-  // date from toISOString() (always UTC) but time from toTimeString() (the
+-  // server process's local timezone) meant that any ticket raised between
+-  // 6pm-11:59pm UTC could get an issue_date one calendar day behind what
+-  // issue_time actually represents — corrupting the "opened date" that the
+-  // Hub Performance date filter and CSV export both group by.
+-  const iso = now.toISOString(); // e.g. 2026-09-07T04:33:12.345Z
+-  const [date, timePart] = iso.split('T');
+-  const time = timePart.split('.')[0]; // HH:MM:SS, same UTC instant as `date`
++  const iso = now.toISOString(); // true UTC instant, e.g. 2026-09-07T04:33:12.345Z — used for created_at/responded_at
++
++  // issue_date/issue_time are read by the dashboard as Asia/Dhaka (UTC+6)
++  // wall-clock values (see index.html's getOpenedAtISO, which appends
++  // "+06:00" to them) — that's what drives the "Submitted" column, the
++  // date-range filters, and both CSV exports. Deriving them from the raw
++  // UTC iso string above used to store the UTC wall-clock instead, which
++  // the dashboard then mislabeled as Dhaka time, showing every ticket's
++  // submitted time 6 hours earlier than when it actually came in. Shifting
++  // by +6h here before splitting gives Dhaka wall-clock date/time so the
++  // two sides agree.
++  const dhaka = new Date(now.getTime() + 6 * 60 * 60 * 1000);
++  const dhakaIso = dhaka.toISOString();
++  const [date, timePart] = dhakaIso.split('T');
++  const time = timePart.split('.')[0]; // HH:MM:SS, Dhaka wall-clock, same calendar day as `date`
+   return { date, time, iso };
+ }
+ 
+-- 
+2.43.0
+

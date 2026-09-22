@@ -1,0 +1,67 @@
+diff --git a/index.html b/index.html
+index 836257f..84f2d5a 100644
+--- a/index.html
++++ b/index.html
+@@ -3158,6 +3158,22 @@ function getIssueHubName(issue) {
+     return manualName || (issue.hub || '').trim();
+ }
+ 
++// FIX: Hub Performance (map, list, leaderboard, today chart, remarks log,
++// trend report, and CSV export) used to read `issue.hub` directly instead of
++// going through getIssueHubName(). That meant a manually-set/overridden Hub
++// Name (from the Hub Info modal, e.g. when the sheet lookup missed or got a
++// ticket's hub wrong) showed correctly in the Issue Tracker table and its
++// Hub Name filter, but the SAME ticket was still grouped under its old
++// auto-fetched hub (or dumped into "Unassigned" if none was ever fetched)
++// everywhere in Hub Performance — silently splitting one hub's numbers
++// across two buckets. Every hub-grouping function below now calls this
++// single helper so "manual overrides win, else auto-fetched, else
++// Unassigned" is applied exactly once and stays consistent everywhere.
++function getIssueHubNameOrUnassigned(issue) {
++    const name = getIssueHubName(issue);
++    return name ? name : 'Unassigned';
++}
++
+ // Builds the Responded By and Hub Name filter dropdowns from whatever
+ // values are currently present in issuesData. Mirrors rebuildTagFilterOptions
+ // above — only rebuilt when data actually changes, not on every render.
+@@ -4710,8 +4726,7 @@ function rebuildHubPerfTagFilterOptions() {
+ function computeHubStats() {
+     const stats = {};
+     getHubPerformanceIssues().forEach(issue => {
+-        const rawHub = (issue.hub || '').toString().trim();
+-        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
++        const hubName = getIssueHubNameOrUnassigned(issue);
+         if (!stats[hubName]) stats[hubName] = {
+             open: 0, inProgress: 0, resolved: 0, total: 0,
+             tickets: [], remarksGiven: 0, remarkDurations: [], lateCount: 0, resolvedNoRemark: 0
+@@ -5084,8 +5099,7 @@ function computeHubTodayCounts(category) {
+     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' });
+     const data = {};
+     issuesData.forEach(issue => {
+-        const rawHub = (issue.hub || '').toString().trim();
+-        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
++        const hubName = getIssueHubNameOrUnassigned(issue);
+         if (getHubCategory(hubName) !== category) return;
+         if (!data[hubName]) data[hubName] = { issuesToday: 0, remarksToday: 0 };
+ 
+@@ -5152,8 +5166,7 @@ function buildHubRemarksLog() {
+         if (!hasRemarks || !at) return;
+         const remarkMs = new Date(at).getTime();
+         if (isNaN(remarkMs)) return;
+-        const rawHub = (issue.hub || '').toString().trim();
+-        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
++        const hubName = getIssueHubNameOrUnassigned(issue);
+         const { timeToRemark } = computeTimeToRemark(issue);
+         rows.push({
+             hub: hubName,
+@@ -5205,8 +5218,7 @@ const HUB_TREND_LIMITS = { day: 21, week: 16, month: 12 };
+ // Progress. Reuses getHubRemarksMeta so it stays consistent with the map/list/modal.
+ function buildHubRemarkRows(hubFilter) {
+     return getHubPerformanceIssues().map(issue => {
+-        const rawHub = (issue.hub || '').toString().trim();
+-        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
++        const hubName = getIssueHubNameOrUnassigned(issue);
+         return { issue, hubName };
+     }).filter(r => !hubFilter || hubFilter === 'all' || r.hubName === hubFilter)
+       .map(r => {
