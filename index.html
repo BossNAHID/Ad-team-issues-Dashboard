@@ -376,19 +376,27 @@ body {
 [data-theme="dark"] .followup-later { color: #9ca3af; }
 .kam-remark-btn { cursor: pointer; text-align: left; }
 .kam-remark-btn:hover { text-decoration: underline; }
-.ops-sent-btns { display: flex; flex-direction: column; gap: 4px; }
-.ops-sent-btn {
+.isf-send-btn {
     cursor: pointer; text-align: center; white-space: nowrap;
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.02em;
-    padding: 3px 8px; border-radius: 6px; transition: all 0.15s ease;
-    background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);
+    padding: 4px 10px; border-radius: 6px; transition: all 0.15s ease;
+    background: rgba(234,179,8,0.12); color: #eab308; border: 1px solid rgba(234,179,8,0.35);
 }
-.ops-sent-btn:hover { filter: brightness(1.1); }
-.ops-sent-btn.ops-sent-active {
-    background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.4);
+.isf-send-btn:hover { filter: brightness(1.1); }
+body.viewer-mode .isf-send-btn { cursor: default; opacity: 0.85; }
+.isf-sent-info { display: flex; flex-direction: column; gap: 3px; cursor: pointer; max-width: 160px; }
+.isf-status-badge {
+    display: inline-block; width: fit-content; font-size: 0.65rem; font-weight: 700;
+    letter-spacing: 0.02em; padding: 2px 8px; border-radius: 6px;
 }
-body.viewer-mode .ops-sent-btn { cursor: default; opacity: 0.85; }
-body.hide-ops-col .ops-col { display: none !important; }
+.isf-status-open { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+.isf-status-progress { background: rgba(59,130,246,0.12); color: #3b82f6; border: 1px solid rgba(59,130,246,0.35); }
+.isf-status-resolved { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.4); }
+.isf-remark-preview {
+    font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 160px;
+}
+body.hide-isf-col .isf-col { display: none !important; }
 .hub-live-dot {
     display: inline-block; width: 7px; height: 7px; border-radius: 9999px;
     background: #22c55e; margin-right: 5px; position: relative; top: -1px;
@@ -1127,7 +1135,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                                     <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-56">KAM Remarks</th>
                                     <th class="p-4 w-56">Hub Remarks</th>
-                                    <th class="p-4 w-32 ops-col">Sent to OPS</th>
+                                    <th class="p-4 w-32 isf-col">Sent to ISF</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -1239,7 +1247,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                                     <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-56">KAM Remarks</th>
                                     <th class="p-4 w-56">Hub Remarks</th>
-                                    <th class="p-4 w-32 ops-col">Sent to OPS</th>
+                                    <th class="p-4 w-32 isf-col">Sent to ISF</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -1869,6 +1877,67 @@ body.viewer-mode #modal-status-section .status-save-hint {
     </div>
 </div>
 
+<div id="isfModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="isfModalTitle">
+    <div class="modal-overlay absolute inset-0" onclick="closeIsfModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+        <div class="rounded-2xl shadow-2xl overflow-hidden theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
+            <div class="p-6 border-b flex justify-between items-start theme-transition" style="border-color: var(--border-color);">
+                <div>
+                    <p class="text-gold text-xs font-mono mb-1" id="isfModalTicket">CB-0000-00000</p>
+                    <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);" id="isfModalTitle">Send to ISF</h3>
+                </div>
+                <button onclick="closeIsfModal()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto" style="max-height: 70vh;">
+                <div id="isfSentInfo" class="hidden rounded-lg p-4 border theme-transition" style="background-color: var(--bg-modal-content); border-color: var(--border-color);">
+                    <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">ISF Status</p>
+                    <p class="text-sm font-bold theme-transition" style="color: var(--text-primary);" id="isfSentStatus">Open</p>
+                    <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);" id="isfSentZone">-</p>
+                    <p class="text-xs uppercase font-semibold mt-3 mb-1 theme-transition" style="color: var(--text-muted);">OPS Remark</p>
+                    <p class="text-sm leading-relaxed whitespace-pre-wrap break-words theme-transition" style="color: var(--text-secondary);" id="isfSentRemark">No remark yet from OPS.</p>
+                </div>
+                <div>
+                    <label for="isf-category" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Category</label>
+                    <select id="isf-category" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="" disabled selected>Choose category</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="isf-subcategory" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Subcategory</label>
+                    <select id="isf-subcategory" disabled class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="" selected>Choose category first</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="isf-hub" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Hub Name</label>
+                    <input type="text" id="isf-hub" list="isfHubList" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Type or pick the hub name" maxlength="100">
+                    <datalist id="isfHubList"></datalist>
+                    <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Zone (ISD/OSD/SUB/Central Sort) is set automatically from this hub — unrecognized hubs go to Central Sort.</p>
+                </div>
+                <div>
+                    <label for="isf-details" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Details</label>
+                    <textarea id="isf-details" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue for OPS..." maxlength="1000"></textarea>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="submitIsfEscalation()" id="isfSubmitBtn" class="flex-1 py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
+                        Send to ISF
+                    </button>
+                </div>
+                <p class="text-xs text-center italic theme-transition" style="color: var(--text-muted);">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Sending creates a ticket on the Issues Escalation Dashboard. It can't be edited here afterward — updates come back from OPS as remarks.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Raise Issue Modal -->
 <div id="raiseIssueModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="raiseIssueModalTitle">
     <div class="modal-overlay absolute inset-0" onclick="closeRaiseIssue()"></div>
@@ -1943,11 +2012,12 @@ function isViewer() {
     return !!(currentUser && currentUser.role === 'viewer');
 }
 
-// "Sent to OPS" (CTG/OSD/ISD) is restricted to just these two people — every
-// other logged-in user (including other admins) sees the column blank/hidden.
-const SENT_TO_OPS_ALLOWED_EMAILS = ['nuruzzaman.nahid@carrybee.com', 'asif.rashid@carrybee.com'];
-function canUseSentToOps() {
-    return !!(currentUser && SENT_TO_OPS_ALLOWED_EMAILS.includes(currentUser.email));
+// "Sent to ISF" is restricted to just these two people — every other
+// logged-in user (including other admins) sees the column blank/hidden.
+// (Same restriction the old "Sent to OPS" column had.)
+const SENT_TO_ISF_ALLOWED_EMAILS = ['nuruzzaman.nahid@carrybee.com', 'asif.rashid@carrybee.com'];
+function canUseIsf() {
+    return !!(currentUser && SENT_TO_ISF_ALLOWED_EMAILS.includes(currentUser.email));
 }
 
 let currentUser = null;
@@ -2032,7 +2102,7 @@ function updateUserUI() {
     document.getElementById('userAvatar').textContent = initials;
     document.getElementById('dropdownName').textContent = currentUser.name;
     document.getElementById('dropdownEmail').textContent = currentUser.email;
-    document.body.classList.toggle('hide-ops-col', !canUseSentToOps());
+    document.body.classList.toggle('hide-isf-col', !canUseIsf());
 }
 
 function toggleUserMenu() {
@@ -2144,6 +2214,48 @@ const GROUP_TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJp
 
 const WHATSAPP_BRIDGE_URL = 'https://whats-app-agent-for-ad-dashboard.onrender.com';
 const WHATSAPP_BRIDGE_API_KEY = 'changeme'; // same key you used on the bridge's /admin page
+
+// ==================== ISF (Issues Escalation Dashboard) INTEGRATION ====================
+// "Send to ISF" replaces the old CTG/OSD/ISD toggle buttons: it creates a real
+// ticket in the Central Issues Escalation system (Central-issues-escalation-form
+// backend) so it shows up on the OPS console there, gets a proper hub/zone,
+// and its remarks/status flow back here.
+// TODO: fill in the real deployed URL of the Central-issues-escalation-form backend.
+const ISF_API_BASE = 'https://REPLACE-WITH-central-issues-escalation-form.onrender.com';
+// Must match AD_TEAM_SERVICE_KEY set in that backend's environment (server.js).
+// Generate any long random string and set it in both places — it is not a
+// per-user password, just a shared secret between the two apps.
+const ISF_SERVICE_KEY = 'REPLACE-WITH-SHARED-SERVICE-KEY';
+
+// Hub -> region, copied from Central-issues-escalation-form/hub-info.json so a
+// hub picked here auto-resolves to the correct zone (ISD / OSD / SUB) exactly
+// the way it would if raised directly on that form. Any hub not found here
+// (or left blank) falls back to "Central Sort" so it still lands somewhere
+// on the escalation dashboard instead of being silently dropped.
+const ISF_HUB_REGION_MAP = {"Mohakhali":"ISD","Vatara":"ISD","Uttara":"ISD","60 Feet":"ISD","Pallabi":"ISD","Khilgaon":"ISD","Jatrabari":"ISD","Lalbagh":"ISD","Mohammadpur":"ISD","3PL":"OSD","Narayanganj":"SUB","Gazipur-Boardbazar":"SUB","Sonargaon":"SUB","Bhulta-Gawsia":"SUB","Savar":"SUB","Keraniganj":"SUB","Tangail-Sadar":"OSD","Barguna-Sadar":"OSD","Barishal-Sadar":"OSD","Bhola-Sadar":"OSD","Patuakhali-Sadar":"OSD","Pirojpur-Sadar":"OSD","Bandarban-Sadar":"OSD","Comilla-Sadar":"OSD","Comilla-Laksam":"OSD","Cox's Bazar-Sadar":"OSD","CTG-Halishahar":"OSD","CTG-Nasirabad":"OSD","Feni-Sadar":"OSD","Lakshmipur-Sadar":"OSD","Noakhali-Sadar":"OSD","Narsingdi-Sadar":"OSD","Jamalpur-Sadar":"OSD","Mymensingh-Sadar":"OSD","Netrokona-Sadar":"OSD","Bogra-Sadar":"OSD","Joypurhat-Sadar":"OSD","Naogaon-Sadar":"OSD","Rajshahi-Sadar":"OSD","Sirajganj-Sadar":"OSD","Dinajpur-Sadar":"OSD","Gaibandha-Sadar":"OSD","Rangpur-Sadar":"OSD","Habiganj-Sadar":"OSD","Maulvibazar-Sadar":"OSD","Sunamganj-Sadar":"OSD","Sylhet-Sadar":"OSD","Khulna-Sadar":"OSD","Natore-Sadar":"OSD","Jhalokathi-Sadar":"OSD","Pabna-Sadar":"OSD","Nilphamari-Sadar":"OSD","Panchagarh-Sadar":"OSD","Lalmonirhat-Sadar":"OSD","Rangamati-Sadar":"OSD","Rajbari-Sadar":"OSD","Kurigram-Sadar":"OSD","Narail-Sadar":"OSD","Jessore-Sadar":"OSD","Kushtia-Sadar":"OSD","Satkhira-Sadar":"OSD","Chandpur-Sadar":"OSD","Khagrachari-Sadar":"OSD","Bagerhat-Sadar":"OSD","Jhenaidah-Sadar":"OSD","Magura-Sadar":"OSD","Sherpur-Sadar":"OSD","Thakurgaon-Sadar":"OSD","B.Baria-Sadar":"OSD","Shariatpur-Sadar":"OSD","Central Sort":"ISD","Central Return":"ISD","Self Inbound":"ISD","Gazipur-Joydebpur":"SUB","Gopalganj-Sadar":"OSD","Manikganj-Sadar":"OSD","Chuadanga-Sadar":"OSD","Savar-Baipail":"SUB","Kishoreganj-Sadar":"OSD","Central IB":"ISD"};
+// NOTE: this is a snapshot — if hub-info.json on the Central system gets new
+// hubs added later, copy the updated list over (or better, have this file
+// fetch hub-info.json from that repo at load time instead of hardcoding it).
+
+// Category -> subcategories, copied verbatim from Central-issues-escalation-form
+// so an ISF ticket raised from here uses the exact same taxonomy as one raised
+// directly on that form.
+const ISF_CATEGORY_MAP = {
+    "Delivery Delay": ["Hub processing delay","Rider unavailable","Address / location issue","Weather or force majeure","Traffic / distance issue","Customer unreachable","Vehicle breakdown"],
+    "Payment Issue": ["COD not remitted","Payment delay","Wrong amount collected","Payment not updated in system","Bank / transfer issue"],
+    "Pickup": ["Pickup not done","Pickup delay","Rider no-show","Wrong pickup address","Pickup rescheduled without notice"],
+    "Return Delay": ["Return not initiated","Return stuck at hub","Return rider not assigned","Delayed return to merchant"],
+    "Return Exchange": ["Exchange not processed","Wrong item returned","Exchange delay","Customer refused exchange"],
+    "Reverse Pickup": ["Reverse pickup not scheduled","Reverse pickup delay","Rider refused reverse pickup","Customer unavailable for reverse pickup"],
+    "Charge Extra/Wrong COD": ["Extra charge without notice","Wrong COD amount entered","Weight discrepancy charge","Unauthorized charge"],
+    "Damage": ["Product damaged in transit","Packaging damaged","Damage at hub","Damage during handling"],
+    "No Entry/Cancelled": ["Order cancelled by rider","No entry in system","Cancelled without reason","Duplicate entry"],
+    "Unprofessionalism": ["Rider misbehavior","Hub staff misbehavior","Rude communication","Inappropriate conduct"],
+    "Wrong Routing": ["Sent to wrong hub","Wrong zone assignment","Misrouted parcel","Routing system error"],
+    "Wrong Tag/Parcel Swapped": ["Tag mismatch","Parcel swapped with another order","Barcode / label error","Wrong merchant tag"],
+    "Breach of CLOSEBOX": ["Seal broken before delivery","Unauthorized box opening","Tampering reported by customer","Missing items after breach"],
+    "Urgent Delivery": ["Same-day delivery request","VIP / priority merchant request","Time-sensitive product","Festival / peak season request"]
+};
 
 let kamTableReady = false;
 
@@ -2411,140 +2523,266 @@ function applyHubManualInfo() {
     });
 }
 
-// ==================== SENT TO OPS (CTG / OSD / ISD) ====================
-// Three toggle buttons per ticket letting a KAM mark which OPS division(s)
-// the issue has been escalated to. Shared across every teammate/device via
-// the same Turso DB the other manual-tracking features use (not localStorage),
-// so the button color reflects reality no matter who's viewing it.
-let sentToOpsTableReady = false;
-let sentToOpsMap = new Map(); // ticketId -> { ctg, osd, isd, updatedBy, updatedAt }
+// ==================== SENT TO ISF (Issues Escalation Dashboard) ====================
+// Replaces the old CTG/OSD/ISD toggle buttons. Clicking "Send to ISF" opens a
+// popup (category + subcategory + hub name + details), then creates a real
+// ticket on the Central Issues Escalation backend so it shows up on that
+// system's OPS console. The zone (ISD/OSD/SUB/Central Sort) is derived
+// automatically from the hub name via ISF_HUB_REGION_MAP — falling back to
+// "Central Sort" when the hub isn't recognized — so nobody has to pick it by
+// hand and get it wrong. Once sent, this ticket's status/remarks are synced
+// back from Central periodically (see syncIsfStatuses) and shown in the cell.
+//
+// Local bookkeeping lives in the same Turso DB the other manual-tracking
+// features use (not localStorage), keyed by our own ticketId, so every
+// teammate/device sees the same "sent" state and remark.
+let isfTableReady = false;
+let isfMap = new Map(); // ticketId -> { isfId, category, subcategory, hub, zone, status, remarks, remarksBy, updatedBy, updatedAt }
 
-async function ensureSentToOpsTable() {
-    if (sentToOpsTableReady) return;
-    await tursoQuery(`CREATE TABLE IF NOT EXISTS sent_to_ops (
+async function ensureIsfTable() {
+    if (isfTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS isf_escalations (
         ticket_id TEXT PRIMARY KEY,
-        ctg_ops INTEGER NOT NULL DEFAULT 0,
-        osd_ops INTEGER NOT NULL DEFAULT 0,
-        isd_ops INTEGER NOT NULL DEFAULT 0,
+        isf_id TEXT,
+        category TEXT,
+        subcategory TEXT,
+        hub TEXT,
+        zone TEXT,
+        status TEXT,
+        remarks TEXT,
+        remarks_by TEXT,
         updated_by TEXT,
         updated_at TEXT NOT NULL
     )`);
-    sentToOpsTableReady = true;
+    isfTableReady = true;
 }
 
-async function loadSentToOpsFromTurso() {
+async function loadIsfFromTurso() {
     try {
-        await ensureSentToOpsTable();
-        const { rows } = await tursoQuery('SELECT ticket_id, ctg_ops, osd_ops, isd_ops, updated_by, updated_at FROM sent_to_ops');
-        sentToOpsMap = new Map(rows.map(r => [r.ticket_id, {
-            ctg: String(r.ctg_ops) === '1',
-            osd: String(r.osd_ops) === '1',
-            isd: String(r.isd_ops) === '1',
+        await ensureIsfTable();
+        const { rows } = await tursoQuery('SELECT * FROM isf_escalations');
+        isfMap = new Map(rows.map(r => [r.ticket_id, {
+            isfId: r.isf_id || '',
+            category: r.category || '',
+            subcategory: r.subcategory || '',
+            hub: r.hub || '',
+            zone: r.zone || '',
+            status: r.status || 'Open',
+            remarks: r.remarks || '',
+            remarksBy: r.remarks_by || '',
             updatedBy: r.updated_by || '',
             updatedAt: r.updated_at
         }]));
     } catch (e) {
-        console.error('Load sent-to-ops error:', e);
+        console.error('Load ISF escalations error:', e);
     }
 }
 
-function applySentToOps() {
+function applyIsf() {
     issuesData.forEach(issue => {
-        const rec = issue.ticketId && sentToOpsMap.get(issue.ticketId);
-        issue.sentToOps = rec ? { ctg: !!rec.ctg, osd: !!rec.osd, isd: !!rec.isd } : { ctg: false, osd: false, isd: false };
+        const rec = issue.ticketId && isfMap.get(issue.ticketId);
+        issue.isf = rec || null;
     });
 }
 
-function renderSentToOpsCell(issue) {
-    if (!canUseSentToOps()) return '';
-    const state = issue.sentToOps || { ctg: false, osd: false, isd: false };
-    const btn = (key, label) => `<button type="button" onclick="toggleSentToOps('${escapeHTML(issue.ticketId)}', '${key}')" class="ops-sent-btn${state[key] ? ' ops-sent-active' : ''}">${label}</button>`;
-    return `<div class="ops-sent-btns">${btn('ctg', 'CTG OPS')}${btn('osd', 'OSD OPS')}${btn('isd', 'ISD OPS')}</div>`;
+async function saveIsfRecord(ticketId, rec) {
+    isfMap.set(ticketId, rec);
+    await ensureIsfTable();
+    await tursoQuery(
+        `INSERT INTO isf_escalations (ticket_id, isf_id, category, subcategory, hub, zone, status, remarks, remarks_by, updated_by, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(ticket_id) DO UPDATE SET isf_id = excluded.isf_id, category = excluded.category,
+             subcategory = excluded.subcategory, hub = excluded.hub, zone = excluded.zone, status = excluded.status,
+             remarks = excluded.remarks, remarks_by = excluded.remarks_by, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+        [ticketId, rec.isfId, rec.category, rec.subcategory, rec.hub, rec.zone, rec.status, rec.remarks, rec.remarksBy, rec.updatedBy, rec.updatedAt]
+    );
 }
 
-async function toggleSentToOps(ticketId, which) {
-    if (!canUseSentToOps()) return;
-    if (isViewer()) { showToast('View-only access — you cannot update OPS status.', 'warning'); return; }
+const ISF_STATUS_BADGE_CLASS = {
+    'Open': 'isf-status-open',
+    'In Progress': 'isf-status-progress',
+    'Resolved': 'isf-status-resolved'
+};
+
+function renderIsfCell(issue) {
+    if (!canUseIsf()) return '';
+    const rec = issue.isf;
+    if (!rec || !rec.isfId) {
+        return `<button type="button" onclick="openIsfModal('${escapeHTML(issue.ticketId)}')" class="isf-send-btn">Send to ISF</button>`;
+    }
+    const badgeClass = ISF_STATUS_BADGE_CLASS[rec.status] || 'isf-status-open';
+    const remarkText = rec.remarks ? escapeHTML(rec.remarks) : 'No remark yet';
+    return `
+        <div class="isf-sent-info" onclick="openIsfModal('${escapeHTML(issue.ticketId)}')" title="Click to view details">
+            <span class="isf-status-badge ${badgeClass}">${escapeHTML(rec.status || 'Open')}</span>
+            <span class="isf-remark-preview" title="${remarkText}">${remarkText}</span>
+        </div>`;
+}
+
+let currentIsfIssue = null;
+
+function openIsfModal(ticketId) {
+    if (!canUseIsf()) return;
     const issue = issuesData.find(i => i.ticketId === ticketId);
     if (!issue) return;
-    if (issue.demo) { showToast("Server offline — OPS status isn't saved.", 'error'); return; }
+    currentIsfIssue = issue;
 
-    const current = issue.sentToOps || { ctg: false, osd: false, isd: false };
-    const turningOn = !current[which];
-    const next = { ...current, [which]: turningOn };
-    issue.sentToOps = next;
-    const now = new Date().toISOString();
-    const updatedBy = currentUser ? currentUser.name : 'Unknown';
-    sentToOpsMap.set(ticketId, { ...next, updatedBy, updatedAt: now });
+    document.getElementById('isfModalTicket').innerText = issue.ticketId;
+    const rec = issue.isf;
+    const alreadySent = !!(rec && rec.isfId);
 
-    // Optimistic UI update, same pattern used elsewhere in the app.
+    // Populate hub datalist once from the known hub list.
+    const hubList = document.getElementById('isfHubList');
+    if (hubList && !hubList.dataset.populated) {
+        hubList.innerHTML = Object.keys(ISF_HUB_REGION_MAP).sort().map(h => `<option value="${escapeHTML(h)}"></option>`).join('');
+        hubList.dataset.populated = '1';
+    }
+
+    // Populate category dropdown once.
+    const catSelect = document.getElementById('isf-category');
+    if (catSelect && !catSelect.dataset.populated) {
+        catSelect.innerHTML = '<option value="" disabled selected>Choose category</option>' +
+            Object.keys(ISF_CATEGORY_MAP).map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+        catSelect.dataset.populated = '1';
+        catSelect.addEventListener('change', populateIsfSubcategory);
+    }
+
+    const defaultHub = (issue.hubManualName || issue.hub || '').trim();
+    document.getElementById('isf-hub').value = alreadySent ? rec.hub : defaultHub;
+    document.getElementById('isf-details').value = alreadySent ? '' : (issue.details || '');
+    document.getElementById('isf-category').value = alreadySent ? rec.category : '';
+    populateIsfSubcategory();
+    if (alreadySent) document.getElementById('isf-subcategory').value = rec.subcategory;
+
+    // Once a ticket has been sent, the form becomes read-only status/remark
+    // view — re-raising the same ticket on Central would just create a
+    // duplicate, so editing is locked after the first send.
+    ['isf-category', 'isf-subcategory', 'isf-hub', 'isf-details'].forEach(id => {
+        document.getElementById(id).disabled = alreadySent;
+    });
+    document.getElementById('isfSubmitBtn').classList.toggle('hidden', alreadySent);
+    document.getElementById('isfSentInfo').classList.toggle('hidden', !alreadySent);
+    if (alreadySent) {
+        document.getElementById('isfSentStatus').innerText = rec.status || 'Open';
+        document.getElementById('isfSentRemark').innerText = rec.remarks || 'No remark yet from OPS.';
+        document.getElementById('isfSentZone').innerText = `${rec.zone || '-'} zone`;
+    }
+
+    document.getElementById('isfModal').classList.remove('hidden');
+}
+
+function closeIsfModal() {
+    document.getElementById('isfModal').classList.add('hidden');
+    currentIsfIssue = null;
+}
+
+function populateIsfSubcategory() {
+    const cat = document.getElementById('isf-category').value;
+    const subSelect = document.getElementById('isf-subcategory');
+    const subs = ISF_CATEGORY_MAP[cat] || [];
+    subSelect.innerHTML = subs.length
+        ? subs.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('')
+        : '<option value="" selected>Choose category first</option>';
+    subSelect.disabled = !subs.length;
+}
+
+async function submitIsfEscalation() {
+    if (!currentIsfIssue) return;
+    if (isViewer()) { showToast('View-only access — you cannot send to ISF.', 'warning'); return; }
+    const issue = currentIsfIssue;
+
+    const category = document.getElementById('isf-category').value;
+    const subcategory = document.getElementById('isf-subcategory').value;
+    const hub = document.getElementById('isf-hub').value.trim();
+    const details = document.getElementById('isf-details').value.trim();
+
+    if (!category || !subcategory || !hub || !details) {
+        showToast('Category, subcategory, hub name, and details are all required.', 'warning');
+        return;
+    }
+    if (issue.demo) { showToast("Server offline — can't send to ISF.", 'error'); return; }
+
+    const zone = ISF_HUB_REGION_MAP[hub] || 'Central Sort';
+    const btn = document.getElementById('isfSubmitBtn');
+    btn.disabled = true;
+    btn.innerText = 'Sending…';
+
+    try {
+        const res = await fetch(`${ISF_API_BASE}/api/issues`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-service-key': ISF_SERVICE_KEY },
+            body: JSON.stringify({
+                consignment: issue.consignmentId || issue.ticketId,
+                channel: 'OPS',
+                zone,
+                hub,
+                status: 'Open',
+                category,
+                subcategory,
+                details
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.id) {
+            throw new Error(data.error || `ISF responded ${res.status}`);
+        }
+
+        const now = new Date().toISOString();
+        const rec = {
+            isfId: data.id,
+            category, subcategory, hub, zone,
+            status: 'Open',
+            remarks: '',
+            remarksBy: '',
+            updatedBy: currentUser ? currentUser.name : 'Unknown',
+            updatedAt: now
+        };
+        await saveIsfRecord(issue.ticketId, rec);
+        issue.isf = rec;
+
+        showToast('Sent to ISF — escalated to ' + zone, 'success');
+        closeIsfModal();
+        renderTable();
+        if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+    } catch (err) {
+        console.error('Send to ISF error:', err);
+        showToast('Failed to send to ISF: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Send to ISF';
+    }
+}
+
+// Pulls the latest status/remark for every ticket already sent to ISF and
+// not yet Resolved. Called on the normal auto-refresh cycle (see
+// loadIssues), so remarks the OPS console adds on the Central system show up
+// here without anyone touching this dashboard.
+async function syncIsfStatuses() {
+    const pending = [...isfMap.entries()].filter(([, rec]) => rec.isfId && rec.status !== 'Resolved');
+    if (!pending.length) return;
+    await Promise.all(pending.map(async ([ticketId, rec]) => {
+        try {
+            const res = await fetch(`${ISF_API_BASE}/api/issues/${rec.isfId}`, {
+                headers: { 'x-service-key': ISF_SERVICE_KEY }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.status === rec.status && (data.remarks || '') === rec.remarks) return; // no change
+            const updated = {
+                ...rec,
+                status: data.status || rec.status,
+                remarks: data.remarks || '',
+                remarksBy: data.remarks_by || '',
+                updatedAt: new Date().toISOString()
+            };
+            await saveIsfRecord(ticketId, updated);
+        } catch (err) {
+            console.error(`ISF status sync failed for ${ticketId}:`, err);
+        }
+    }));
+    applyIsf();
     renderTable();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
-
-    try {
-        await ensureSentToOpsTable();
-        await tursoQuery(
-            `INSERT INTO sent_to_ops (ticket_id, ctg_ops, osd_ops, isd_ops, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)
-             ON CONFLICT(ticket_id) DO UPDATE SET ctg_ops = excluded.ctg_ops, osd_ops = excluded.osd_ops, isd_ops = excluded.isd_ops, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
-            [ticketId, next.ctg ? 1 : 0, next.osd ? 1 : 0, next.isd ? 1 : 0, updatedBy, now]
-        );
-    } catch (err) {
-        console.error('Save sent-to-ops error:', err);
-        showToast('Failed to save OPS status. It may not persist after refresh.', 'error');
-    }
-
-    // Only notify OPS when a button is switched ON (red→green) — turning one
-    // back off is just a correction and shouldn't re-alert the group.
-    if (turningOn) sendOpsAlertToWhatsApp(issue, which);
-}
-
-// ==================== SENT TO OPS → WHATSAPP ====================
-// Fixed dashboard→group names (create these mappings once in the bridge's
-// /admin page, pointed at BisDev CTG & Comilla / BisDev OSD Central /
-// BisDev ISD Central) — unlike KAM remarks, these three don't depend on the
-// ticket's assignedGroup, they always go to the same OPS group per division.
-// Dashboard names match the button labels exactly ("CTG OPS" / "OSD OPS" /
-// "ISD OPS") — that's what's mapped in the bridge's /admin page.
-const OPS_WA_GROUP_NAMES = {
-    ctg: 'CTG OPS',
-    osd: 'OSD OPS',
-    isd: 'ISD OPS'
-};
-const OPS_WA_LABELS = { ctg: 'CTG OPS', osd: 'OSD OPS', isd: 'ISD OPS' };
-
-function formatOpsAlertMessage(issue) {
-    const openedISO = getOpenedAtISO(issue);
-    const dateLabel = openedISO
-        ? new Date(openedISO).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-        : (issue.date || '-');
-    const hubName = issue.hubManualName || issue.hub || '-';
-    const lines = [];
-    lines.push(`Date: ${dateLabel}`);
-    lines.push(`Consignment ID: ${issue.consignmentId || '-'}`);
-    lines.push(`HUB: ${hubName}`);
-    lines.push(`Details: ${issue.details || '-'}`);
-    return lines.join('\n');
-}
-
-async function sendOpsAlertToWhatsApp(issue, which) {
-    const groupName = OPS_WA_GROUP_NAMES[which];
-    if (!groupName) return;
-    try {
-        const message = formatOpsAlertMessage(issue);
-        const res = await fetch(`${WHATSAPP_BRIDGE_URL}/api/send-remark`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': WHATSAPP_BRIDGE_API_KEY },
-            body: JSON.stringify({ group_name: groupName, message, kam_email: currentUser ? currentUser.email : null })
-        });
-        if (!res.ok) {
-            const errBody = await res.json().catch(() => ({}));
-            throw new Error(errBody.error || `Bridge responded ${res.status}`);
-        }
-        showToast(`Sent to ${OPS_WA_LABELS[which]} group`, 'success');
-    } catch (err) {
-        console.error('OPS WhatsApp send error:', err);
-        showToast(`Marked ${OPS_WA_LABELS[which]}, but WhatsApp send failed.`, 'error');
-    }
 }
 
 let currentHubInfoIssue = null;
@@ -2761,11 +2999,12 @@ async function fetchData(silent = false) {
         loadStatusTimelineFromTurso(),
         loadHubRemarksTimelineFromTurso(),
         loadHubManualInfoFromTurso(),
-        loadSentToOpsFromTurso()
+        loadIsfFromTurso()
     ]);
     applyHubRemarksTimeline();
     applyHubManualInfo();
-    applySentToOps();
+    applyIsf();
+    syncIsfStatuses(); // fire-and-forget; re-renders itself once statuses come back
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -3483,7 +3722,7 @@ function buildIssueRowHTML(issue, extraLeadingCellHtml) {
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${renderHubCell(issue)}</td>
                     <td class="p-4 text-xs">${renderKamRemarkCell(issue)}</td>
                     <td class="p-4 text-xs">${renderHubRemarksCell(issue, status)}</td>
-                    <td class="p-4 text-xs ops-col">${renderSentToOpsCell(issue)}</td>
+                    <td class="p-4 text-xs isf-col">${renderIsfCell(issue)}</td>
                     <td class="p-4 text-right">
                         <button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
@@ -5623,7 +5862,7 @@ window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); closeKamRemarkModal(); closeHubInfoModal(); }
     if (e.key === 'Tab') {
-        const modal = ['issueModal', 'raiseIssueModal', 'kamRemarkModal', 'hubInfoModal']
+        const modal = ['issueModal', 'raiseIssueModal', 'kamRemarkModal', 'hubInfoModal', 'isfModal']
             .map(id => document.getElementById(id))
             .find(m => m && !m.classList.contains('hidden'));
         if (!modal) return;
