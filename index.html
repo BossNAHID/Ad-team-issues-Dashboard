@@ -2220,12 +2220,11 @@ const WHATSAPP_BRIDGE_API_KEY = 'changeme'; // same key you used on the bridge's
 // ticket in the Central Issues Escalation system (Central-issues-escalation-form
 // backend) so it shows up on the OPS console there, gets a proper hub/zone,
 // and its remarks/status flow back here.
-// TODO: fill in the real deployed URL of the Central-issues-escalation-form backend.
-const ISF_API_BASE = 'https://REPLACE-WITH-central-issues-escalation-form.onrender.com';
+const ISF_API_BASE = 'https://central-issues-escalation-form.onrender.com';
 // Must match AD_TEAM_SERVICE_KEY set in that backend's environment (server.js).
 // Generate any long random string and set it in both places — it is not a
 // per-user password, just a shared secret between the two apps.
-const ISF_SERVICE_KEY = 'REPLACE-WITH-SHARED-SERVICE-KEY';
+const ISF_SERVICE_KEY = '22334455';
 
 // Hub -> region, copied from Central-issues-escalation-form/hub-info.json so a
 // hub picked here auto-resolves to the correct zone (ISD / OSD / SUB) exactly
