@@ -1897,6 +1897,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                     <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);" id="isfSentZone">-</p>
                     <p class="text-xs uppercase font-semibold mt-3 mb-1 theme-transition" style="color: var(--text-muted);">OPS Remark</p>
                     <p class="text-sm leading-relaxed whitespace-pre-wrap break-words theme-transition" style="color: var(--text-secondary);" id="isfSentRemark">No remark yet from OPS.</p>
+                    <p class="text-xs mt-2 theme-transition" style="color: var(--text-muted);" id="isfSentMeta"></p>
                 </div>
                 <div>
                     <label for="isf-category" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Category</label>
@@ -1917,7 +1918,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                     <input type="text" id="isf-hub" list="isfHubList" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Type or pick the hub name" maxlength="100">
                     <datalist id="isfHubList"></datalist>
-                    <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Zone (ISD/OSD/SUB/Central Sort) is set automatically from this hub — unrecognized hubs go to Central Sort.</p>
+                    <p id="isfZonePreview" class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Pick the hub — its zone (ISD / OSD / SUB / Central Sort) is set automatically.</p>
                 </div>
                 <div>
                     <label for="isf-details" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Details</label>
@@ -2231,10 +2232,44 @@ const ISF_SERVICE_KEY = '22334455';
 // the way it would if raised directly on that form. Any hub not found here
 // (or left blank) falls back to "Central Sort" so it still lands somewhere
 // on the escalation dashboard instead of being silently dropped.
-const ISF_HUB_REGION_MAP = {"Mohakhali":"ISD","Vatara":"ISD","Uttara":"ISD","60 Feet":"ISD","Pallabi":"ISD","Khilgaon":"ISD","Jatrabari":"ISD","Lalbagh":"ISD","Mohammadpur":"ISD","3PL":"OSD","Narayanganj":"SUB","Gazipur-Boardbazar":"SUB","Sonargaon":"SUB","Bhulta-Gawsia":"SUB","Savar":"SUB","Keraniganj":"SUB","Tangail-Sadar":"OSD","Barguna-Sadar":"OSD","Barishal-Sadar":"OSD","Bhola-Sadar":"OSD","Patuakhali-Sadar":"OSD","Pirojpur-Sadar":"OSD","Bandarban-Sadar":"OSD","Comilla-Sadar":"OSD","Comilla-Laksam":"OSD","Cox's Bazar-Sadar":"OSD","CTG-Halishahar":"OSD","CTG-Nasirabad":"OSD","Feni-Sadar":"OSD","Lakshmipur-Sadar":"OSD","Noakhali-Sadar":"OSD","Narsingdi-Sadar":"OSD","Jamalpur-Sadar":"OSD","Mymensingh-Sadar":"OSD","Netrokona-Sadar":"OSD","Bogra-Sadar":"OSD","Joypurhat-Sadar":"OSD","Naogaon-Sadar":"OSD","Rajshahi-Sadar":"OSD","Sirajganj-Sadar":"OSD","Dinajpur-Sadar":"OSD","Gaibandha-Sadar":"OSD","Rangpur-Sadar":"OSD","Habiganj-Sadar":"OSD","Maulvibazar-Sadar":"OSD","Sunamganj-Sadar":"OSD","Sylhet-Sadar":"OSD","Khulna-Sadar":"OSD","Natore-Sadar":"OSD","Jhalokathi-Sadar":"OSD","Pabna-Sadar":"OSD","Nilphamari-Sadar":"OSD","Panchagarh-Sadar":"OSD","Lalmonirhat-Sadar":"OSD","Rangamati-Sadar":"OSD","Rajbari-Sadar":"OSD","Kurigram-Sadar":"OSD","Narail-Sadar":"OSD","Jessore-Sadar":"OSD","Kushtia-Sadar":"OSD","Satkhira-Sadar":"OSD","Chandpur-Sadar":"OSD","Khagrachari-Sadar":"OSD","Bagerhat-Sadar":"OSD","Jhenaidah-Sadar":"OSD","Magura-Sadar":"OSD","Sherpur-Sadar":"OSD","Thakurgaon-Sadar":"OSD","B.Baria-Sadar":"OSD","Shariatpur-Sadar":"OSD","Central Sort":"ISD","Central Return":"ISD","Self Inbound":"ISD","Gazipur-Joydebpur":"SUB","Gopalganj-Sadar":"OSD","Manikganj-Sadar":"OSD","Chuadanga-Sadar":"OSD","Savar-Baipail":"SUB","Kishoreganj-Sadar":"OSD","Central IB":"ISD"};
-// NOTE: this is a snapshot — if hub-info.json on the Central system gets new
-// hubs added later, copy the updated list over (or better, have this file
-// fetch hub-info.json from that repo at load time instead of hardcoding it).
+const ISF_HUB_REGION_MAP = {"Uttara":"ISD","Diabari":"ISD","Khilkhet":"ISD","Mohakhali":"ISD","Badda-Nadda":"ISD","Pallabi":"ISD","60 Feet":"ISD","Mohammadpur":"ISD","Kolabagan":"ISD","Lalbagh":"ISD","Kamrangirchar":"ISD","Badda":"ISD","Jatrabari":"ISD","Khilgaon":"ISD","Dhonia":"ISD","Demra":"ISD","Gazipur-Joydebpur":"SUB","Gazipur-Kapasiya":"SUB","Gazipur-Mawna":"SUB","Gazipur-Mouchak":"SUB","Gazipur-Boardbazar":"SUB","Gazipur-Kaliganj":"SUB","Savar":"SUB","Savar-Baipail":"SUB","Savar-Dhamrai":"SUB","Narayanganj":"SUB","Sonargaon":"SUB","Narayanganj-Bandar":"SUB","Narayanganj-Araihazar":"SUB","Rupganj":"SUB","Bhulta-Gawsia":"SUB","Dohar-Nawabganj":"SUB","Keraniganj-Ati Bazar":"SUB","Siddhirganj":"SUB","Keraniganj":"SUB","Jhenaidah-Sadar":"OSD","Jhenaidah-Maheshpur":"OSD","Satkhira-Sadar":"OSD","Meherpur-Sadar":"OSD","Kushtia-Sadar":"OSD","Kushtia-Daulatpur":"OSD","Kushtia-Bheramara":"OSD","Jessore-Sadar":"OSD","Jessore-Sharsha":"OSD","Jessore-Manirampur":"OSD","Khulna-Sadar":"OSD","Jessore-Abhaynagar":"OSD","Bagerhat-Sadar":"OSD","Khulna-Paikgacha":"OSD","Khulna-Dumuria":"OSD","Satkhira-Kaliganj":"OSD","Bagerhat-Mongla":"OSD","Bagerhat-Morrelganj":"OSD","Chuadanga-Sadar":"OSD","Magura-Sadar":"OSD","Narail-Sadar":"OSD","Barishal-Sadar":"OSD","Barisal-Gournadi":"OSD","Barisal-Bakerganj":"OSD","Bhola-Charfassion":"OSD","Bhola-Sadar":"OSD","Pirojpur-Sadar":"OSD","Pirojpur-Mathbaria":"OSD","Barisal-Muladi":"OSD","Jhalokathi-Sadar":"OSD","Barguna-Sadar":"OSD","Patuakhali-Sadar":"OSD","Patuakhali-Galachipa":"OSD","Patuakhali-Kalapara":"OSD","Shariatpur-Sadar":"OSD","Gopalganj-Sadar":"OSD","Madaripur-Shibchar":"OSD","Madaripur-Sadar":"OSD","Faridpur-Sadar":"OSD","Gopalganj-Muksudpur":"OSD","Shariatpur-Damudya":"OSD","Munshiganj-Sirajdikhan":"OSD","Tangail-Sakhipur":"OSD","Manikganj-Sadar":"OSD","Manikganj-Singair":"OSD","Munshiganj-Sreenagar":"OSD","Tangail-Mirzapur":"OSD","Munshiganj-Sadar":"OSD","Tangail-Sadar":"OSD","Tangail-Ghatail":"OSD","Faridpur-Bhanga":"OSD","Rajbari-Sadar":"OSD","Faridpur-Boalmari":"OSD","Sylhet-Golapganj":"OSD","Sylhet-Beanibazar":"OSD","Sylhet-Sadar":"OSD","Sylhet-Jaintiapur":"OSD","Sylhet-Kanaighat":"OSD","Sylhet-Gowainghat":"OSD","Sylhet-Bishwanath":"OSD","Sylhet-Osmaninagar":"OSD","Sylhet-Fenchuganj":"OSD","Sylhet-Dakshin Surma":"OSD","Habiganj-Sadar":"OSD","Habiganj-Chunarughat":"OSD","Habiganj-Madhabpur":"OSD","Habiganj-Nabiganj":"OSD","Moulvibazar-Barlekha":"OSD","Moulvibazar-Kulaura":"OSD","Maulvibazar-Sadar":"OSD","Moulvibazar-Rajnagar":"OSD","Moulvibazar-Sreemangal":"OSD","Moulvibazar-Kamalganj":"OSD","Sunamganj-Sadar":"OSD","Sunamganj-Chhatak":"OSD","Sunamganj-Jagannathpur":"OSD","Sunamganj-Derai":"OSD","Netrokona-Sadar":"OSD","Netrakona-Mohonganj":"OSD","Jamalpur-Dewanganj":"OSD","Sherpur-Sadar":"OSD","Mymensingh-Phulpur":"OSD","Mymensingh-Bhaluka":"OSD","Mymensingh-Gaffargaon":"OSD","Mymensingh-Trishal":"OSD","Mymensingh-Sadar":"OSD","Jamalpur-Sadar":"OSD","Joypurhat-Sadar":"OSD","Bogra-Sadar":"OSD","Bogra-Sherpur":"OSD","Bogra-Dhupchanchia":"OSD","Sirajganj-Sadar":"OSD","Naogaon-Sadar":"OSD","Pabna-Bhangura":"OSD","Natore-Sadar":"OSD","Pabna-Ishwardi":"OSD","Pabna-Sadar":"OSD","Sirajganj-Shahjadpur":"OSD","Chapainawabganj-Shibganj":"OSD","Chapainawabganj-Sadar":"OSD","Sirajganj-Ullapara":"OSD","Naogaon-Patnitala":"OSD","Rajshahi-Puthia":"OSD","Rajshahi-Sadar":"OSD","Gaibandha-Sadar":"OSD","Rangpur-Sadar":"OSD","Nilphamari-Sadar":"OSD","Kurigram-Sadar":"OSD","Thakurgaon-Sadar":"OSD","Lalmonirhat-Sadar":"OSD","Rangpur-Mithapukur":"OSD","Nilphamari-Saidpur":"OSD","Gaibandha-Gobindaganj":"OSD","Panchagarh-Sadar":"OSD","Dinajpur-Nawabganj":"OSD","Nilphamari-Joldhaka":"OSD","Dinajpur-Birganj":"OSD","Dinajpur-Sadar":"OSD","Narsingdi-Sadar":"OSD","Narsingdi-Roypura":"OSD","Narsingdi-Shibpur":"OSD","Kishoreganj-Mithamain":"OSD","Kishoreganj-Pakundia":"OSD","Kishoreganj-Sadar":"OSD","Kishoreganj-Bhairab":"OSD","B.Baria-Sadar":"OSD","B.Baria-Kasba":"OSD","B.Baria-Nabinagar":"OSD","B.Baria-Bancharampur":"OSD","B.Baria-Nasirnagar":"OSD","B.Baria-Akhaura":"OSD","Comilla-Laksam":"OSD","Comilla-Sadar":"OSD","Comilla-Muradnagar":"OSD","Comilla-Chandina":"OSD","Comilla-Chauddagram":"OSD","Comilla-Daudkandi":"OSD","Comilla-Burichang":"OSD","Comilla-Nangalkot":"OSD","Comilla-Brahmanpara":"OSD","Comilla-Barura":"OSD","Comilla-Debidwar":"OSD","Chandpur-Sadar":"OSD","Chandpur-Faridganj":"OSD","Chandpur-Hajiganj":"OSD","Chandpur-Kachua":"OSD","Chandpur-Shahrasti":"OSD","Chandpur-Matlab Dakshin":"OSD","Noakhali-Senbagh":"OSD","Noakhali-Companiganj":"OSD","Noakhali-Sadar":"OSD","Noakhali-Chatkhil":"OSD","Noakhali-Subarnachar":"OSD","Noakhali-Begumganj":"OSD","Lakshmipur-Kamalnagar":"OSD","Lakshmipur-Ramganj":"OSD","Lakshmipur-Raipur":"OSD","Lakshmipur-Sadar":"OSD","Cox's Bazar-Chakaria":"OSD","Cox's Bazar-Maheshkhali":"OSD","Cox's Bazar-Ramu":"OSD","Cox's Bazar-Sadar":"OSD","Cox's Bazar-Teknaf":"OSD","Cox's Bazar-Ukhia":"OSD","CTG-Halishahar":"OSD","CTG-Nasirabad":"OSD","CTG-Patenga":"OSD","CTG-Patiya":"OSD","CTG-Fatikchari":"OSD","CTG-Raozan":"OSD","CTG-Satkania":"OSD","CTG-Sitakunda":"OSD","Feni-Chhagalnaiya":"OSD","Feni-Daganbhuya":"OSD","Feni-Sadar":"OSD","Feni-Sonagazi":"OSD","Khagrachari-Sadar":"OSD","Rangamati-Sadar":"OSD","Bandarban-Sadar":"OSD","CTG-Anwara":"OSD","CTG-Banshkhali":"OSD","CTG-Rangunia":"OSD","CTG-Hathazari":"OSD","CTG-Mirsarai":"OSD","Central Sort":"Central Sort","Vatara":"ISD","3PL":"OSD","Central Return":"ISD","Self Inbound":"ISD","Bhanga Sub Sort":"OSD","Barishal Sub Sort":"OSD","Bhairab Sub Sort":"OSD","Sirajgonj Sub Sort":"OSD","Comilla Sub Sort":"OSD","Rangpur Sub Sort":"OSD","Sylhet Sub Sort":"OSD","Central IB":"ISD","Lost & Damaged":"OSD","Jashore Sub Sort":"OSD","CTG Sub Sort":"OSD","Noakhali Sub Sort":"OSD","TNL":"OSD","Nadda":"ISD","CarrybeeHQ":"ISD"};
+// This is only a fallback snapshot (all 239 hubs the escalation backend knows).
+// loadIsfHubs() below replaces it with the live list from GET /api/hubs the
+// first time the popup opens, so new hubs on the backend appear without a redeploy.
+let isfHubsLoaded = false;
+function isfResolveHub(input) {
+    const key = String(input || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!key) return null;
+    for (const name of Object.keys(ISF_HUB_REGION_MAP)) {
+        if (name.toLowerCase() === key) return { name, zone: ISF_HUB_REGION_MAP[name] };
+    }
+    return null;
+}
+async function loadIsfHubs() {
+    if (isfHubsLoaded) return;
+    try {
+        const res = await fetch(`${ISF_API_BASE}/api/hubs`, { headers: { 'x-service-key': ISF_SERVICE_KEY } });
+        if (!res.ok) return;
+        const list = await res.json();
+        if (!Array.isArray(list) || !list.length) return;
+        Object.keys(ISF_HUB_REGION_MAP).forEach(k => delete ISF_HUB_REGION_MAP[k]);
+        list.forEach(h => { if (h && h.name && h.zone) ISF_HUB_REGION_MAP[h.name] = h.zone; });
+        const hubList = document.getElementById('isfHubList');
+        if (hubList) hubList.innerHTML = Object.keys(ISF_HUB_REGION_MAP).sort().map(h => `<option value="${escapeHTML(h)}"></option>`).join('');
+        isfHubsLoaded = true;
+        updateIsfZonePreview();
+    } catch (e) { /* keep the built-in snapshot */ }
+}
+function updateIsfZonePreview() {
+    const el = document.getElementById('isfZonePreview');
+    const input = document.getElementById('isf-hub');
+    if (!el || !input) return;
+    const v = input.value.trim();
+    const hit = isfResolveHub(v);
+    if (!v) { el.textContent = 'Pick the hub — its zone (ISD / OSD / SUB / Central Sort) is set automatically.'; el.style.color = 'var(--text-muted)'; }
+    else if (hit) { el.textContent = `✓ ${hit.name} → will be escalated to ${hit.zone}`; el.style.color = '#22c55e'; }
+    else { el.textContent = 'Not a known hub — pick one from the list.'; el.style.color = '#ef4444'; }
+}
 
 // Category -> subcategories, copied verbatim from Central-issues-escalation-form
 // so an ISF ticket raised from here uses the exact same taxonomy as one raised
@@ -2553,6 +2588,9 @@ async function ensureIsfTable() {
         updated_by TEXT,
         updated_at TEXT NOT NULL
     )`);
+    // When OPS wrote the latest remark (added later, so older tables need it).
+    try { await tursoQuery('ALTER TABLE isf_escalations ADD COLUMN remarks_at TEXT'); }
+    catch (e) { /* column already exists */ }
     isfTableReady = true;
 }
 
@@ -2569,6 +2607,7 @@ async function loadIsfFromTurso() {
             status: r.status || 'Open',
             remarks: r.remarks || '',
             remarksBy: r.remarks_by || '',
+            remarksAt: r.remarks_at || '',
             updatedBy: r.updated_by || '',
             updatedAt: r.updated_at
         }]));
@@ -2588,12 +2627,13 @@ async function saveIsfRecord(ticketId, rec) {
     isfMap.set(ticketId, rec);
     await ensureIsfTable();
     await tursoQuery(
-        `INSERT INTO isf_escalations (ticket_id, isf_id, category, subcategory, hub, zone, status, remarks, remarks_by, updated_by, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO isf_escalations (ticket_id, isf_id, category, subcategory, hub, zone, status, remarks, remarks_by, remarks_at, updated_by, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(ticket_id) DO UPDATE SET isf_id = excluded.isf_id, category = excluded.category,
              subcategory = excluded.subcategory, hub = excluded.hub, zone = excluded.zone, status = excluded.status,
-             remarks = excluded.remarks, remarks_by = excluded.remarks_by, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
-        [ticketId, rec.isfId, rec.category, rec.subcategory, rec.hub, rec.zone, rec.status, rec.remarks, rec.remarksBy, rec.updatedBy, rec.updatedAt]
+             remarks = excluded.remarks, remarks_by = excluded.remarks_by, remarks_at = excluded.remarks_at,
+             updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+        [ticketId, rec.isfId, rec.category, rec.subcategory, rec.hub, rec.zone, rec.status, rec.remarks, rec.remarksBy, rec.remarksAt || '', rec.updatedBy, rec.updatedAt]
     );
 }
 
@@ -2635,7 +2675,9 @@ function openIsfModal(ticketId) {
     if (hubList && !hubList.dataset.populated) {
         hubList.innerHTML = Object.keys(ISF_HUB_REGION_MAP).sort().map(h => `<option value="${escapeHTML(h)}"></option>`).join('');
         hubList.dataset.populated = '1';
+        document.getElementById('isf-hub').addEventListener('input', updateIsfZonePreview);
     }
+    loadIsfHubs();
 
     // Populate category dropdown once.
     const catSelect = document.getElementById('isf-category');
@@ -2648,6 +2690,7 @@ function openIsfModal(ticketId) {
 
     const defaultHub = (issue.hubManualName || issue.hub || '').trim();
     document.getElementById('isf-hub').value = alreadySent ? rec.hub : defaultHub;
+    updateIsfZonePreview();
     document.getElementById('isf-details').value = alreadySent ? '' : (issue.details || '');
     document.getElementById('isf-category').value = alreadySent ? rec.category : '';
     populateIsfSubcategory();
@@ -2664,7 +2707,11 @@ function openIsfModal(ticketId) {
     if (alreadySent) {
         document.getElementById('isfSentStatus').innerText = rec.status || 'Open';
         document.getElementById('isfSentRemark').innerText = rec.remarks || 'No remark yet from OPS.';
-        document.getElementById('isfSentZone').innerText = `${rec.zone || '-'} zone`;
+        document.getElementById('isfSentZone').innerText = `${rec.hub || '-'} · ${rec.zone || '-'} zone`;
+        document.getElementById('isfSentMeta').innerText = rec.remarks
+            ? [rec.remarksBy ? `By ${rec.remarksBy}` : '', rec.remarksAt ? formatTimestamp(rec.remarksAt) : ''].filter(Boolean).join(' · ')
+            : '';
+        refreshOneIsf(issue.ticketId); // pull the newest OPS remark right now
     }
 
     document.getElementById('isfModal').classList.remove('hidden');
@@ -2701,7 +2748,12 @@ async function submitIsfEscalation() {
     }
     if (issue.demo) { showToast("Server offline — can't send to ISF.", 'error'); return; }
 
-    const zone = ISF_HUB_REGION_MAP[hub] || 'Central Sort';
+    const hubHit = isfResolveHub(hub);
+    if (!hubHit) {
+        showToast('Unknown hub name — pick a hub from the list so it reaches the right team.', 'warning');
+        return;
+    }
+    const zone = hubHit.zone;
     const btn = document.getElementById('isfSubmitBtn');
     btn.disabled = true;
     btn.innerText = 'Sending…';
@@ -2714,11 +2766,12 @@ async function submitIsfEscalation() {
                 consignment: issue.consignmentId || issue.ticketId,
                 channel: 'OPS',
                 zone,
-                hub,
+                hub: hubHit.name,
                 status: 'Open',
                 category,
                 subcategory,
-                details
+                details,
+                loggedBy: currentUser && currentUser.email ? currentUser.email : ''
             })
         });
         const data = await res.json().catch(() => ({}));
@@ -2729,7 +2782,7 @@ async function submitIsfEscalation() {
         const now = new Date().toISOString();
         const rec = {
             isfId: data.id,
-            category, subcategory, hub, zone,
+            category, subcategory, hub: data.hub || hubHit.name, zone: data.zone || zone,
             status: 'Open',
             remarks: '',
             remarksBy: '',
@@ -2739,7 +2792,7 @@ async function submitIsfEscalation() {
         await saveIsfRecord(issue.ticketId, rec);
         issue.isf = rec;
 
-        showToast('Sent to ISF — escalated to ' + zone, 'success');
+        showToast('Sent to ISF — escalated to ' + rec.zone + (data.assigned === false ? ' (no OPS user is assigned to this hub yet)' : ''), data.assigned === false ? 'warning' : 'success');
         closeIsfModal();
         renderTable();
         if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
@@ -2772,6 +2825,7 @@ async function syncIsfStatuses() {
                 status: data.status || rec.status,
                 remarks: data.remarks || '',
                 remarksBy: data.remarks_by || '',
+                remarksAt: data.updated_at || rec.remarksAt || '',
                 updatedAt: new Date().toISOString()
             };
             await saveIsfRecord(ticketId, updated);
@@ -2782,6 +2836,23 @@ async function syncIsfStatuses() {
     applyIsf();
     renderTable();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+}
+
+// Same as one iteration of syncIsfStatuses(), for the ticket whose popup is open.
+async function refreshOneIsf(ticketId) {
+    const rec = isfMap.get(ticketId);
+    if (!rec || !rec.isfId) return;
+    try {
+        const res = await fetch(`${ISF_API_BASE}/api/issues/${rec.isfId}`, { headers: { 'x-service-key': ISF_SERVICE_KEY } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === rec.status && (data.remarks || '') === rec.remarks) return;
+        await saveIsfRecord(ticketId, { ...rec, status: data.status || rec.status, remarks: data.remarks || '',
+            remarksBy: data.remarks_by || '', remarksAt: data.updated_at || '', updatedAt: new Date().toISOString() });
+        applyIsf();
+        renderTable();
+        if (currentIsfIssue && currentIsfIssue.ticketId === ticketId) openIsfModal(ticketId);
+    } catch (e) { /* the periodic sync will retry */ }
 }
 
 let currentHubInfoIssue = null;
