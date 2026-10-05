@@ -5942,11 +5942,29 @@ function renderTopMerchants() {
         `).join('');
 }
 
+// ---- KAM Performance helpers (use the real issue fields) ----
+function getKamOpenedMs(issue) {
+    const iso = getOpenedAtISO(issue);
+    return iso ? new Date(iso).getTime() : null;
+}
+function getKamProgressMs(issue) {
+    return issue.progressAt ? new Date(issue.progressAt).getTime() : null;
+}
+function getKamSolvedMs(issue) {
+    return issue.resolvedTimelineAt ? new Date(issue.resolvedTimelineAt).getTime() : null;
+}
+function isKamResponded(issue) {
+    return !!(issue.respondedBy || issue.respondedAt || issue.progressAt || issue.resolvedTimelineAt);
+}
+// KAM tab collects durations in seconds; formatDuration() expects milliseconds
+function formatKamDuration(sec) {
+    return formatDuration(sec == null ? null : sec * 1000);
+}
 let currentKamTrendGranularity = 'day';
 
 function getIssueKamName(issue) {
     if (!issue) return 'Unassigned';
-    return (issue.kam_name || issue.kamName || issue.logged_by || issue.loggedBy || issue.kamRemarkBy || 'Unassigned').trim();
+    return String(issue.respondedBy || issue.kamName || issue.kam_name || issue.kamRemarkBy || issue.logged_by || issue.loggedBy || 'Unassigned').trim() || 'Unassigned';
 }
 
 function getAllKamNames() {
@@ -5959,18 +5977,18 @@ function getAllKamNames() {
 }
 
 function populateKamFilterOptions() {
-    const select = document.getElementById('kamPerfKamSelect');
+    const select = document.getElementById('kamPerfSelect');
     if (!select) return;
     const currentVal = select.value;
     const kams = getAllKamNames();
-    select.innerHTML = '<option value="">All KAMs</option>' + kams.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    select.innerHTML = '<option value="">All KAMs</option>' + kams.map(k => `<option value="${escapeHTML(k)}">${escapeHTML(k)}</option>`).join('');
     select.value = currentVal;
 }
 
 function clearKamPerfFilters() {
-    document.getElementById('kamPerfStartDate').value = '';
-    document.getElementById('kamPerfEndDate').value = '';
-    document.getElementById('kamPerfKamSelect').value = '';
+    document.getElementById('kamPerfDateFrom').value = '';
+    document.getElementById('kamPerfDateTo').value = '';
+    document.getElementById('kamPerfSelect').value = '';
     const searchInput = document.getElementById('kamPerfSearchInput');
     if (searchInput) searchInput.value = '';
     renderKamPerformanceTab();
@@ -5989,15 +6007,15 @@ function switchKamTrendGranularity(granularity) {
 }
 
 function getFilteredKamIssues() {
-    const startDateVal = document.getElementById('kamPerfStartDate')?.value;
-    const endDateVal = document.getElementById('kamPerfEndDate')?.value;
-    const selectedKam = document.getElementById('kamPerfKamSelect')?.value;
+    const startDateVal = document.getElementById('kamPerfDateFrom')?.value;
+    const endDateVal = document.getElementById('kamPerfDateTo')?.value;
+    const selectedKam = document.getElementById('kamPerfSelect')?.value;
 
     const startMs = startDateVal ? new Date(startDateVal + 'T00:00:00').getTime() : null;
     const endMs = endDateVal ? new Date(endDateVal + 'T23:59:59.999').getTime() : null;
 
     return issuesData.filter(issue => {
-        const submitMs = issue.submitted_at ? new Date(issue.submitted_at).getTime() : (issue.created_at ? new Date(issue.created_at).getTime() : null);
+        const submitMs = getKamOpenedMs(issue);
         if (startMs && submitMs && submitMs < startMs) return false;
         if (endMs && submitMs && submitMs > endMs) return false;
 
@@ -6044,13 +6062,13 @@ function renderKamPerformanceTab() {
         const kam = getIssueKamName(issue);
         if (kam && kam !== 'Unassigned') activeKams.add(kam);
 
-        if (issue.remarks || issue.kam_remarks || issue.timeToRemark || issue.progressAt || issue.in_progress_at || issue.resolved_at || issue.solved_at) {
+        if (isKamResponded(issue)) {
             responseCount++;
         }
 
-        const submitMs = issue.submitted_at ? new Date(issue.submitted_at).getTime() : (issue.created_at ? new Date(issue.created_at).getTime() : null);
-        const progressMs = issue.in_progress_at ? new Date(issue.in_progress_at).getTime() : (issue.progressAt ? new Date(issue.progressAt).getTime() : null);
-        const solvedMs = issue.resolved_at ? new Date(issue.resolved_at).getTime() : (issue.solved_at ? new Date(issue.solved_at).getTime() : null);
+        const submitMs = getKamOpenedMs(issue);
+        const progressMs = getKamProgressMs(issue);
+        const solvedMs = getKamSolvedMs(issue);
 
         if (submitMs && progressMs && progressMs >= submitMs) {
             openToProgressDurations.push((progressMs - submitMs) / 1000);
@@ -6071,11 +6089,11 @@ function renderKamPerformanceTab() {
     document.getElementById('kam-perf-response-rate').innerText = `${respRate}%`;
 
     const avgOpenProgressSec = openToProgressDurations.length ? (openToProgressDurations.reduce((a, b) => a + b, 0) / openToProgressDurations.length) : null;
-    document.getElementById('kam-perf-avg-open-progress').innerText = avgOpenProgressSec !== null ? formatDuration(avgOpenProgressSec) : '-';
+    document.getElementById('kam-perf-avg-open-progress').innerText = avgOpenProgressSec !== null ? formatKamDuration(avgOpenProgressSec) : '-';
     document.getElementById('kam-perf-open-progress-count').innerText = openToProgressDurations.length.toLocaleString();
 
     const avgProgressSolvedSec = progressToSolvedDurations.length ? (progressToSolvedDurations.reduce((a, b) => a + b, 0) / progressToSolvedDurations.length) : null;
-    document.getElementById('kam-perf-avg-progress-solved').innerText = avgProgressSolvedSec !== null ? formatDuration(avgProgressSolvedSec) : '-';
+    document.getElementById('kam-perf-avg-progress-solved').innerText = avgProgressSolvedSec !== null ? formatKamDuration(avgProgressSolvedSec) : '-';
     document.getElementById('kam-perf-progress-solved-count').innerText = progressToSolvedDurations.length.toLocaleString();
 
     renderKamTrendReport(filteredIssues);
@@ -6090,7 +6108,7 @@ function renderKamTrendReport(issues) {
     const periodsMap = {};
 
     issues.forEach(issue => {
-        const dateObj = issue.submitted_at ? new Date(issue.submitted_at) : (issue.created_at ? new Date(issue.created_at) : null);
+        const dateObj = (getKamOpenedMs(issue) != null ? new Date(getKamOpenedMs(issue)) : null);
         if (!dateObj) return;
         const key = getPeriodKey(dateObj, currentKamTrendGranularity);
 
@@ -6107,13 +6125,13 @@ function renderKamTrendReport(issues) {
         const p = periodsMap[key];
         p.totalIssues++;
 
-        if (issue.remarks || issue.kam_remarks || issue.timeToRemark || issue.progressAt || issue.in_progress_at || issue.resolved_at || issue.solved_at) {
+        if (isKamResponded(issue)) {
             p.responseCount++;
         }
 
         const submitMs = dateObj.getTime();
-        const progressMs = issue.in_progress_at ? new Date(issue.in_progress_at).getTime() : (issue.progressAt ? new Date(issue.progressAt).getTime() : null);
-        const solvedMs = issue.resolved_at ? new Date(issue.resolved_at).getTime() : (issue.solved_at ? new Date(issue.solved_at).getTime() : null);
+        const progressMs = getKamProgressMs(issue);
+        const solvedMs = getKamSolvedMs(issue);
 
         if (submitMs && progressMs && progressMs >= submitMs) {
             p.openToProgressDurations.push((progressMs - submitMs) / 1000);
@@ -6165,13 +6183,13 @@ function renderKamTrendReport(issues) {
 
         html += `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                <td class="p-3 font-semibold theme-transition" style="color: var(--text-primary);">${escapeHtml(key)}</td>
+                <td class="p-3 font-semibold theme-transition" style="color: var(--text-primary);">${escapeHTML(key)}</td>
                 <td class="p-3 font-medium">${p.totalIssues}</td>
                 <td class="p-3"><span class="font-medium text-purple-600 dark:text-purple-400">${p.responseCount}</span></td>
                 <td class="p-3"><span class="font-medium text-blue-600 dark:text-blue-400">${p.openToProgressDurations.length}</span></td>
-                <td class="p-3 font-medium">${avgOpenProgressSec !== null ? formatDuration(avgOpenProgressSec) : '-'}</td>
+                <td class="p-3 font-medium">${avgOpenProgressSec !== null ? formatKamDuration(avgOpenProgressSec) : '-'}</td>
                 <td class="p-3"><span class="font-medium text-emerald-600 dark:text-emerald-400">${p.progressToSolvedDurations.length}</span></td>
-                <td class="p-3 font-medium">${avgProgressSolvedSec !== null ? formatDuration(avgProgressSolvedSec) : '-'}</td>
+                <td class="p-3 font-medium">${avgProgressSolvedSec !== null ? formatKamDuration(avgProgressSolvedSec) : '-'}</td>
                 <td class="p-3 text-xs">${trendHtml}</td>
             </tr>
         `;
@@ -6205,13 +6223,13 @@ function renderKamLeaderboard(issues) {
         const k = kamMap[kamName];
         k.totalIssues++;
 
-        if (issue.remarks || issue.kam_remarks || issue.timeToRemark || issue.progressAt || issue.in_progress_at || issue.resolved_at || issue.solved_at) {
+        if (isKamResponded(issue)) {
             k.responseCount++;
         }
 
-        const submitMs = issue.submitted_at ? new Date(issue.submitted_at).getTime() : (issue.created_at ? new Date(issue.created_at).getTime() : null);
-        const progressMs = issue.in_progress_at ? new Date(issue.in_progress_at).getTime() : (issue.progressAt ? new Date(issue.progressAt).getTime() : null);
-        const solvedMs = issue.resolved_at ? new Date(issue.resolved_at).getTime() : (issue.solved_at ? new Date(issue.solved_at).getTime() : null);
+        const submitMs = getKamOpenedMs(issue);
+        const progressMs = getKamProgressMs(issue);
+        const solvedMs = getKamSolvedMs(issue);
 
         if (submitMs && progressMs && progressMs >= submitMs) {
             k.openToProgressDurations.push((progressMs - submitMs) / 1000);
@@ -6240,13 +6258,13 @@ function renderKamLeaderboard(issues) {
         html += `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                 <td class="p-3 font-semibold text-xs text-slate-400">${idx + 1}</td>
-                <td class="p-3 font-semibold theme-transition" style="color: var(--text-primary);">${escapeHtml(k.name)}</td>
+                <td class="p-3 font-semibold theme-transition" style="color: var(--text-primary);">${escapeHTML(k.name)}</td>
                 <td class="p-3 font-medium">${k.totalIssues}</td>
                 <td class="p-3 font-medium text-purple-600 dark:text-purple-400">${k.responseCount}</td>
                 <td class="p-3 font-medium text-blue-600 dark:text-blue-400">${k.openToProgressDurations.length}</td>
-                <td class="p-3 font-medium">${avgOpenProgressSec !== null ? formatDuration(avgOpenProgressSec) : '-'}</td>
+                <td class="p-3 font-medium">${avgOpenProgressSec !== null ? formatKamDuration(avgOpenProgressSec) : '-'}</td>
                 <td class="p-3 font-medium text-emerald-600 dark:text-emerald-400">${k.progressToSolvedDurations.length}</td>
-                <td class="p-3 font-medium">${avgProgressSolvedSec !== null ? formatDuration(avgProgressSolvedSec) : '-'}</td>
+                <td class="p-3 font-medium">${avgProgressSolvedSec !== null ? formatKamDuration(avgProgressSolvedSec) : '-'}</td>
             </tr>
         `;
     });
@@ -6284,15 +6302,15 @@ function exportKamPerformanceCSV() {
 
     filteredIssues.forEach(i => {
         const kamName = getIssueKamName(i);
-        const submitMs = i.submitted_at ? new Date(i.submitted_at).getTime() : (i.created_at ? new Date(i.created_at).getTime() : null);
-        const progressMs = i.in_progress_at ? new Date(i.in_progress_at).getTime() : (i.progressAt ? new Date(i.progressAt).getTime() : null);
-        const solvedMs = i.resolved_at ? new Date(i.resolved_at).getTime() : (i.solved_at ? new Date(i.solved_at).getTime() : null);
+        const submitMs = getKamOpenedMs(i);
+        const progressMs = getKamProgressMs(i);
+        const solvedMs = getKamSolvedMs(i);
 
         const openToProgressSec = (submitMs && progressMs && progressMs >= submitMs) ? (progressMs - submitMs) / 1000 : null;
         const progressToSolvedSec = (progressMs && solvedMs && solvedMs >= progressMs) ? (solvedMs - progressMs) / 1000 : ((submitMs && solvedMs && solvedMs >= submitMs) ? (solvedMs - submitMs) / 1000 : null);
         const totalDurationSec = (submitMs && solvedMs && solvedMs >= submitMs) ? (solvedMs - submitMs) / 1000 : null;
 
-        const hasResp = (i.remarks || i.kam_remarks || i.timeToRemark || i.progressAt || i.in_progress_at || i.resolved_at || i.solved_at) ? 1 : 0;
+        const hasResp = isKamResponded(i) ? 1 : 0;
 
         const fields = [
             i.ticketId || i.ticket_id || '',
@@ -6302,12 +6320,12 @@ function exportKamPerformanceCSV() {
             i.consignmentId || i.consignment_id || '',
             i.issueTag || i.issue_tag || '',
             getStatus(i),
-            i.submitted_at || i.created_at ? formatTimestamp(i.submitted_at || i.created_at) : '',
+            getOpenedAtISO(i) ? formatTimestamp(getOpenedAtISO(i)) : '',
             progressMs ? formatTimestamp(progressMs) : '',
             solvedMs ? formatTimestamp(solvedMs) : '',
-            openToProgressSec !== null ? formatDuration(openToProgressSec) : '',
-            progressToSolvedSec !== null ? formatDuration(progressToSolvedSec) : '',
-            totalDurationSec !== null ? formatDuration(totalDurationSec) : '',
+            openToProgressSec !== null ? formatKamDuration(openToProgressSec) : '',
+            progressToSolvedSec !== null ? formatKamDuration(progressToSolvedSec) : '',
+            totalDurationSec !== null ? formatKamDuration(totalDurationSec) : '',
             hasResp,
             i.remarks || i.kam_remarks || ''
         ];
