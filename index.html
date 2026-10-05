@@ -426,6 +426,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 body.viewer-mode #tab-pending,
 body.viewer-mode #tab-analytics,
 body.viewer-mode #tab-hub-performance,
+body.viewer-mode #tab-kam-performance,
 body.viewer-mode #tab-performance,
 body.viewer-mode #tab-raise-issue,
 body.viewer-mode .hub-edit-btn {
@@ -971,6 +972,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
             <button onclick="switchView('pending')" id="tab-pending" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Pending</button>
             <button onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
             <button onclick="switchView('hub-performance')" id="tab-hub-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">HUB Performance</button>
+            <button onclick="switchView('kam-performance')" id="tab-kam-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">KAM Performance</button>
             <button onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
             <button onclick="showRaiseIssue()" id="tab-raise-issue" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
             <span class="shrink-0 w-px h-4" style="background: var(--border-color);"></span>
@@ -1445,6 +1447,153 @@ body.viewer-mode #modal-status-section .status-save-hint {
                         </div>
                         <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No performance data yet</h3>
                         <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Data appears as issues move to In Progress / Resolved</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KAM PERFORMANCE VIEW -->
+            <div id="view-kam-performance" class="hidden fade-in space-y-6">
+                <!-- Top Actions Bar & Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold theme-transition" style="color: var(--text-primary);">KAM Performance Overview</h2>
+                        <p class="text-xs theme-transition" style="color: var(--text-muted);">
+                            Everyday total issues, responses, Open &rarr; In Progress time, and In Progress &rarr; Solved time per KAM.
+                        </p>
+                    </div>
+                    <button onclick="exportKamPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
+                        <i class="fa-solid fa-download"></i> Export KAM Performance CSV
+                    </button>
+                </div>
+
+                <!-- Filters Bar -->
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap justify-between">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Filter:</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs theme-transition" style="color: var(--text-muted);">From</span>
+                                <input type="date" id="kamPerfDateFrom" onchange="renderKamPerformanceTab()" title="From date" aria-label="From date"
+                                    class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                                    style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs theme-transition" style="color: var(--text-muted);">To</span>
+                                <input type="date" id="kamPerfDateTo" onchange="renderKamPerformanceTab()" title="To date" aria-label="To date"
+                                    class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                                    style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            </div>
+                            <select id="kamPerfSelect" onchange="renderKamPerformanceTab()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                                style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                                <option value="all">All KAMs</option>
+                            </select>
+                            <button onclick="clearKamPerfFilters()" class="px-3 py-2 rounded-lg text-xs font-medium transition-colors border theme-transition hover:opacity-80"
+                                style="border-color: var(--border-color); color: var(--text-muted); background-color: var(--bg-input);">
+                                <i class="fa-solid fa-rotate-left mr-1"></i>Reset
+                            </button>
+                        </div>
+                        <div class="inline-flex rounded-lg p-1 theme-transition self-start sm:self-auto" style="background: var(--bg-input); border: 1px solid var(--border-color);">
+                            <button onclick="switchKamTrendGranularity('day')" id="kam-trend-tab-day" class="perf-trend-tab active px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Daily (DOD)</button>
+                            <button onclick="switchKamTrendGranularity('week')" id="kam-trend-tab-week" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Weekly (WOW)</button>
+                            <button onclick="switchKamTrendGranularity('month')" id="kam-trend-tab-month" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Monthly (MOM)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Summary Stat Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Total Issues</p>
+                        <h3 class="text-2xl font-bold mt-1 theme-transition" style="color: var(--cb-yellow);" id="kam-perf-total-issues">-</h3>
+                        <div class="flex items-center gap-3 mt-2 text-[11px] theme-transition" style="color: var(--text-muted);">
+                            <span>Active KAMs: <span id="kam-perf-active-kams" style="color: var(--text-secondary);">-</span></span>
+                        </div>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Response Count</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #a855f7;" id="kam-perf-response-count">-</h3>
+                        <div class="flex items-center gap-3 mt-2 text-[11px] theme-transition" style="color: var(--text-muted);">
+                            <span>Response Rate: <span id="kam-perf-response-rate" style="color: var(--text-secondary);">-</span></span>
+                        </div>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Avg Open &rarr; In Progress</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #3b82f6;" id="kam-perf-avg-open-progress">-</h3>
+                        <div class="flex items-center gap-3 mt-2 text-[11px] theme-transition" style="color: var(--text-muted);">
+                            <span>Transitioned: <span id="kam-perf-open-progress-count" style="color: var(--text-secondary);">-</span></span>
+                        </div>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Avg In Progress &rarr; Solved</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #22c55e;" id="kam-perf-avg-progress-solved">-</h3>
+                        <div class="flex items-center gap-3 mt-2 text-[11px] theme-transition" style="color: var(--text-muted);">
+                            <span>Solved: <span id="kam-perf-progress-solved-count" style="color: var(--text-secondary);">-</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOD / WOW / MOM Trend Report Panel -->
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">DOD / WOW / MOM Trend Report</h3>
+                            <p class="text-xs theme-transition" style="color: var(--text-muted);">Everyday total issues count, response count, Open &rarr; In Progress count &amp; avg time, and In Progress &rarr; Solved count &amp; avg time</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-3 whitespace-nowrap">Period</th>
+                                    <th class="p-3 whitespace-nowrap">Total Issues</th>
+                                    <th class="p-3 whitespace-nowrap">Response Count</th>
+                                    <th class="p-3 whitespace-nowrap">Open &rarr; In Progress (Count)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg Time (Open &rarr; In Progress)</th>
+                                    <th class="p-3 whitespace-nowrap">In Progress &rarr; Solved (Count)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg Time (In Progress &rarr; Solved)</th>
+                                    <th class="p-3 whitespace-nowrap">vs Previous Solves</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kamPerfTrendTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="kamPerfTrendEmptyState" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No issue performance data matching the selected date range or KAM filter.</p>
+                    </div>
+                </div>
+
+                <!-- KAM Leaderboard Breakdown Panel -->
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">KAM Breakdown &amp; Leaderboard</h3>
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
+                            <input type="text" id="kamPerfSearchInput" placeholder="Search KAM Name..." oninput="renderKamPerformanceTab()"
+                                class="w-full rounded-lg pl-10 pr-4 py-2 text-xs placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+                                style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-3 whitespace-nowrap w-12">#</th>
+                                    <th class="p-3 whitespace-nowrap">KAM Name</th>
+                                    <th class="p-3 whitespace-nowrap">Total Issues</th>
+                                    <th class="p-3 whitespace-nowrap">Response Count</th>
+                                    <th class="p-3 whitespace-nowrap">Open &rarr; In Progress (Count)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg Time (Open &rarr; In Progress)</th>
+                                    <th class="p-3 whitespace-nowrap">In Progress &rarr; Solved (Count)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg Time (In Progress &rarr; Solved)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kamPerfLeaderboardBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="kamPerfLeaderboardEmpty" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No KAM records found for this filter.</p>
                     </div>
                 </div>
             </div>
@@ -5793,6 +5942,391 @@ function renderTopMerchants() {
         `).join('');
 }
 
+let currentKamTrendGranularity = 'day';
+
+function getIssueKamName(issue) {
+    if (!issue) return 'Unassigned';
+    return (issue.kam_name || issue.kamName || issue.logged_by || issue.loggedBy || issue.kamRemarkBy || 'Unassigned').trim();
+}
+
+function getAllKamNames() {
+    const kams = new Set();
+    issuesData.forEach(issue => {
+        const name = getIssueKamName(issue);
+        if (name && name !== 'Unassigned') kams.add(name);
+    });
+    return Array.from(kams).sort();
+}
+
+function populateKamFilterOptions() {
+    const select = document.getElementById('kamPerfKamSelect');
+    if (!select) return;
+    const currentVal = select.value;
+    const kams = getAllKamNames();
+    select.innerHTML = '<option value="">All KAMs</option>' + kams.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    select.value = currentVal;
+}
+
+function clearKamPerfFilters() {
+    document.getElementById('kamPerfStartDate').value = '';
+    document.getElementById('kamPerfEndDate').value = '';
+    document.getElementById('kamPerfKamSelect').value = '';
+    const searchInput = document.getElementById('kamPerfSearchInput');
+    if (searchInput) searchInput.value = '';
+    renderKamPerformanceTab();
+}
+
+function switchKamTrendGranularity(granularity) {
+    currentKamTrendGranularity = granularity;
+    ['day', 'week', 'month'].forEach(g => {
+        const btn = document.getElementById(`kam-trend-tab-${g}`);
+        if (btn) {
+            if (g === granularity) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    });
+    renderKamPerformanceTab();
+}
+
+function getFilteredKamIssues() {
+    const startDateVal = document.getElementById('kamPerfStartDate')?.value;
+    const endDateVal = document.getElementById('kamPerfEndDate')?.value;
+    const selectedKam = document.getElementById('kamPerfKamSelect')?.value;
+
+    const startMs = startDateVal ? new Date(startDateVal + 'T00:00:00').getTime() : null;
+    const endMs = endDateVal ? new Date(endDateVal + 'T23:59:59.999').getTime() : null;
+
+    return issuesData.filter(issue => {
+        const submitMs = issue.submitted_at ? new Date(issue.submitted_at).getTime() : (issue.created_at ? new Date(issue.created_at).getTime() : null);
+        if (startMs && submitMs && submitMs < startMs) return false;
+        if (endMs && submitMs && submitMs > endMs) return false;
+
+        if (selectedKam) {
+            const kam = getIssueKamName(issue);
+            if (kam.toLowerCase() !== selectedKam.toLowerCase()) return false;
+        }
+        return true;
+    });
+}
+
+function getPeriodKey(dateObj, granularity) {
+    if (!dateObj || isNaN(dateObj.getTime())) return 'Unknown';
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+
+    if (granularity === 'day') {
+        return `${year}-${month}-${day}`;
+    } else if (granularity === 'month') {
+        return `${year}-${month}`;
+    } else if (granularity === 'week') {
+        const d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    }
+    return `${year}-${month}-${day}`;
+}
+
+function renderKamPerformanceTab() {
+    populateKamFilterOptions();
+    const filteredIssues = getFilteredKamIssues();
+
+    let totalIssues = filteredIssues.length;
+    let responseCount = 0;
+    let openToProgressDurations = [];
+    let progressToSolvedDurations = [];
+    const activeKams = new Set();
+
+    filteredIssues.forEach(issue => {
+        const kam = getIssueKamName(issue);
+        if (kam && kam !== 'Unassigned') activeKams.add(kam);
+
+        if (issue.remarks || issue.kam_remarks || issue.timeToRemark || issue.progressAt || issue.in_progress_at || issue.resolved_at || issue.solved_at) {
+            responseCount++;
+        }
+
+        const submitMs = issue.submitted_at ? new Date(issue.submitted_at).getTime() : (issue.created_at ? new Date(issue.created_at).getTime() : null);
+        const progressMs = issue.in_progress_at ? new Date(issue.in_progress_at).getTime() : (issue.progressAt ? new Date(issue.progressAt).getTime() : null);
+        const solvedMs = issue.resolved_at ? new Date(issue.resolved_at).getTime() : (issue.solved_at ? new Date(issue.solved_at).getTime() : null);
+
+        if (submitMs && progressMs && progressMs >= submitMs) {
+            openToProgressDurations.push((progressMs - submitMs) / 1000);
+        }
+
+        if (progressMs && solvedMs && solvedMs >= progressMs) {
+            progressToSolvedDurations.push((solvedMs - progressMs) / 1000);
+        } else if (submitMs && solvedMs && solvedMs >= submitMs && !progressMs) {
+            progressToSolvedDurations.push((solvedMs - submitMs) / 1000);
+        }
+    });
+
+    document.getElementById('kam-perf-total-issues').innerText = totalIssues.toLocaleString();
+    document.getElementById('kam-perf-active-kams').innerText = activeKams.size;
+
+    document.getElementById('kam-perf-response-count').innerText = responseCount.toLocaleString();
+    const respRate = totalIssues ? Math.round((responseCount / totalIssues) * 100) : 0;
+    document.getElementById('kam-perf-response-rate').innerText = `${respRate}%`;
+
+    const avgOpenProgressSec = openToProgressDurations.length ? (openToProgressDurations.reduce((a, b) => a + b, 0) / openToProgressDurations.length) : null;
+    document.getElementById('kam-perf-avg-open-progress').innerText = avgOpenProgressSec !== null ? formatDuration(avgOpenProgressSec) : '-';
+    document.getElementById('kam-perf-open-progress-count').innerText = openToProgressDurations.length.toLocaleString();
+
+    const avgProgressSolvedSec = progressToSolvedDurations.length ? (progressToSolvedDurations.reduce((a, b) => a + b, 0) / progressToSolvedDurations.length) : null;
+    document.getElementById('kam-perf-avg-progress-solved').innerText = avgProgressSolvedSec !== null ? formatDuration(avgProgressSolvedSec) : '-';
+    document.getElementById('kam-perf-progress-solved-count').innerText = progressToSolvedDurations.length.toLocaleString();
+
+    renderKamTrendReport(filteredIssues);
+    renderKamLeaderboard(filteredIssues);
+}
+
+function renderKamTrendReport(issues) {
+    const tbody = document.getElementById('kamPerfTrendTableBody');
+    const emptyState = document.getElementById('kamPerfTrendEmptyState');
+    if (!tbody) return;
+
+    const periodsMap = {};
+
+    issues.forEach(issue => {
+        const dateObj = issue.submitted_at ? new Date(issue.submitted_at) : (issue.created_at ? new Date(issue.created_at) : null);
+        if (!dateObj) return;
+        const key = getPeriodKey(dateObj, currentKamTrendGranularity);
+
+        if (!periodsMap[key]) {
+            periodsMap[key] = {
+                periodKey: key,
+                totalIssues: 0,
+                responseCount: 0,
+                openToProgressDurations: [],
+                progressToSolvedDurations: []
+            };
+        }
+
+        const p = periodsMap[key];
+        p.totalIssues++;
+
+        if (issue.remarks || issue.kam_remarks || issue.timeToRemark || issue.progressAt || issue.in_progress_at || issue.resolved_at || issue.solved_at) {
+            p.responseCount++;
+        }
+
+        const submitMs = dateObj.getTime();
+        const progressMs = issue.in_progress_at ? new Date(issue.in_progress_at).getTime() : (issue.progressAt ? new Date(issue.progressAt).getTime() : null);
+        const solvedMs = issue.resolved_at ? new Date(issue.resolved_at).getTime() : (issue.solved_at ? new Date(issue.solved_at).getTime() : null);
+
+        if (submitMs && progressMs && progressMs >= submitMs) {
+            p.openToProgressDurations.push((progressMs - submitMs) / 1000);
+        }
+        if (progressMs && solvedMs && solvedMs >= progressMs) {
+            p.progressToSolvedDurations.push((solvedMs - progressMs) / 1000);
+        } else if (submitMs && solvedMs && solvedMs >= submitMs && !progressMs) {
+            p.progressToSolvedDurations.push((solvedMs - submitMs) / 1000);
+        }
+    });
+
+    const periodKeys = Object.keys(periodsMap).sort().reverse();
+
+    if (periodKeys.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+    }
+    if (emptyState) emptyState.classList.add('hidden');
+
+    let html = '';
+    for (let i = 0; i < periodKeys.length; i++) {
+        const key = periodKeys[i];
+        const p = periodsMap[key];
+        const nextKey = periodKeys[i + 1];
+        const prevP = nextKey ? periodsMap[nextKey] : null;
+
+        const avgOpenProgressSec = p.openToProgressDurations.length ? (p.openToProgressDurations.reduce((a, b) => a + b, 0) / p.openToProgressDurations.length) : null;
+        const avgProgressSolvedSec = p.progressToSolvedDurations.length ? (p.progressToSolvedDurations.reduce((a, b) => a + b, 0) / p.progressToSolvedDurations.length) : null;
+
+        let trendHtml = '<span class="text-gray-400">-</span>';
+        if (prevP) {
+            const currentSolved = p.progressToSolvedDurations.length;
+            const prevSolved = prevP.progressToSolvedDurations.length;
+            if (prevSolved === 0) {
+                trendHtml = currentSolved > 0 ? `<span class="text-emerald-500 font-semibold"><i class="fa-solid fa-arrow-up text-xs mr-1"></i>+${currentSolved}</span>` : '<span class="text-gray-400">0</span>';
+            } else {
+                const diff = currentSolved - prevSolved;
+                const pct = Math.round((diff / prevSolved) * 100);
+                if (diff > 0) {
+                    trendHtml = `<span class="text-emerald-500 font-semibold"><i class="fa-solid fa-arrow-up text-xs mr-1"></i>+${pct}% (${diff > 0 ? '+' : ''}${diff})</span>`;
+                } else if (diff < 0) {
+                    trendHtml = `<span class="text-rose-500 font-semibold"><i class="fa-solid fa-arrow-down text-xs mr-1"></i>${pct}% (${diff})</span>`;
+                } else {
+                    trendHtml = `<span class="text-gray-400 font-semibold">0% (0)</span>`;
+                }
+            }
+        }
+
+        html += `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                <td class="p-3 font-semibold theme-transition" style="color: var(--text-primary);">${escapeHtml(key)}</td>
+                <td class="p-3 font-medium">${p.totalIssues}</td>
+                <td class="p-3"><span class="font-medium text-purple-600 dark:text-purple-400">${p.responseCount}</span></td>
+                <td class="p-3"><span class="font-medium text-blue-600 dark:text-blue-400">${p.openToProgressDurations.length}</span></td>
+                <td class="p-3 font-medium">${avgOpenProgressSec !== null ? formatDuration(avgOpenProgressSec) : '-'}</td>
+                <td class="p-3"><span class="font-medium text-emerald-600 dark:text-emerald-400">${p.progressToSolvedDurations.length}</span></td>
+                <td class="p-3 font-medium">${avgProgressSolvedSec !== null ? formatDuration(avgProgressSolvedSec) : '-'}</td>
+                <td class="p-3 text-xs">${trendHtml}</td>
+            </tr>
+        `;
+    }
+
+    tbody.innerHTML = html;
+}
+
+function renderKamLeaderboard(issues) {
+    const tbody = document.getElementById('kamPerfLeaderboardBody');
+    const emptyState = document.getElementById('kamPerfLeaderboardEmpty');
+    const searchVal = (document.getElementById('kamPerfSearchInput')?.value || '').toLowerCase().trim();
+    if (!tbody) return;
+
+    const kamMap = {};
+
+    issues.forEach(issue => {
+        const kamName = getIssueKamName(issue);
+        if (searchVal && !kamName.toLowerCase().includes(searchVal)) return;
+
+        if (!kamMap[kamName]) {
+            kamMap[kamName] = {
+                name: kamName,
+                totalIssues: 0,
+                responseCount: 0,
+                openToProgressDurations: [],
+                progressToSolvedDurations: []
+            };
+        }
+
+        const k = kamMap[kamName];
+        k.totalIssues++;
+
+        if (issue.remarks || issue.kam_remarks || issue.timeToRemark || issue.progressAt || issue.in_progress_at || issue.resolved_at || issue.solved_at) {
+            k.responseCount++;
+        }
+
+        const submitMs = issue.submitted_at ? new Date(issue.submitted_at).getTime() : (issue.created_at ? new Date(issue.created_at).getTime() : null);
+        const progressMs = issue.in_progress_at ? new Date(issue.in_progress_at).getTime() : (issue.progressAt ? new Date(issue.progressAt).getTime() : null);
+        const solvedMs = issue.resolved_at ? new Date(issue.resolved_at).getTime() : (issue.solved_at ? new Date(issue.solved_at).getTime() : null);
+
+        if (submitMs && progressMs && progressMs >= submitMs) {
+            k.openToProgressDurations.push((progressMs - submitMs) / 1000);
+        }
+        if (progressMs && solvedMs && solvedMs >= progressMs) {
+            k.progressToSolvedDurations.push((solvedMs - progressMs) / 1000);
+        } else if (submitMs && solvedMs && solvedMs >= submitMs && !progressMs) {
+            k.progressToSolvedDurations.push((solvedMs - submitMs) / 1000);
+        }
+    });
+
+    const kamList = Object.values(kamMap).sort((a, b) => b.totalIssues - a.totalIssues);
+
+    if (kamList.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+    }
+    if (emptyState) emptyState.classList.add('hidden');
+
+    let html = '';
+    kamList.forEach((k, idx) => {
+        const avgOpenProgressSec = k.openToProgressDurations.length ? (k.openToProgressDurations.reduce((a, b) => a + b, 0) / k.openToProgressDurations.length) : null;
+        const avgProgressSolvedSec = k.progressToSolvedDurations.length ? (k.progressToSolvedDurations.reduce((a, b) => a + b, 0) / k.progressToSolvedDurations.length) : null;
+
+        html += `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                <td class="p-3 font-semibold text-xs text-slate-400">${idx + 1}</td>
+                <td class="p-3 font-semibold theme-transition" style="color: var(--text-primary);">${escapeHtml(k.name)}</td>
+                <td class="p-3 font-medium">${k.totalIssues}</td>
+                <td class="p-3 font-medium text-purple-600 dark:text-purple-400">${k.responseCount}</td>
+                <td class="p-3 font-medium text-blue-600 dark:text-blue-400">${k.openToProgressDurations.length}</td>
+                <td class="p-3 font-medium">${avgOpenProgressSec !== null ? formatDuration(avgOpenProgressSec) : '-'}</td>
+                <td class="p-3 font-medium text-emerald-600 dark:text-emerald-400">${k.progressToSolvedDurations.length}</td>
+                <td class="p-3 font-medium">${avgProgressSolvedSec !== null ? formatDuration(avgProgressSolvedSec) : '-'}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+function exportKamPerformanceCSV() {
+    const filteredIssues = getFilteredKamIssues();
+
+    if (!filteredIssues.length) {
+        showToast('No data available to export with current filters.', 'warning');
+        return;
+    }
+
+    const lines = [];
+    const headers = [
+        'Ticket ID',
+        'KAM Name',
+        'Logged By',
+        'Merchant Name',
+        'Consignment ID',
+        'Tag',
+        'Status',
+        'Submitted At',
+        'In Progress At',
+        'Resolved At',
+        'Time (Open -> In Progress)',
+        'Time (In Progress -> Solved)',
+        'Total Duration',
+        'Response Count',
+        'Remarks'
+    ];
+    lines.push(headers.map(csvField).join(','));
+
+    filteredIssues.forEach(i => {
+        const kamName = getIssueKamName(i);
+        const submitMs = i.submitted_at ? new Date(i.submitted_at).getTime() : (i.created_at ? new Date(i.created_at).getTime() : null);
+        const progressMs = i.in_progress_at ? new Date(i.in_progress_at).getTime() : (i.progressAt ? new Date(i.progressAt).getTime() : null);
+        const solvedMs = i.resolved_at ? new Date(i.resolved_at).getTime() : (i.solved_at ? new Date(i.solved_at).getTime() : null);
+
+        const openToProgressSec = (submitMs && progressMs && progressMs >= submitMs) ? (progressMs - submitMs) / 1000 : null;
+        const progressToSolvedSec = (progressMs && solvedMs && solvedMs >= progressMs) ? (solvedMs - progressMs) / 1000 : ((submitMs && solvedMs && solvedMs >= submitMs) ? (solvedMs - submitMs) / 1000 : null);
+        const totalDurationSec = (submitMs && solvedMs && solvedMs >= submitMs) ? (solvedMs - submitMs) / 1000 : null;
+
+        const hasResp = (i.remarks || i.kam_remarks || i.timeToRemark || i.progressAt || i.in_progress_at || i.resolved_at || i.solved_at) ? 1 : 0;
+
+        const fields = [
+            i.ticketId || i.ticket_id || '',
+            kamName,
+            i.logged_by || i.loggedBy || '',
+            i.merchant || i.merchant_name || '',
+            i.consignmentId || i.consignment_id || '',
+            i.issueTag || i.issue_tag || '',
+            getStatus(i),
+            i.submitted_at || i.created_at ? formatTimestamp(i.submitted_at || i.created_at) : '',
+            progressMs ? formatTimestamp(progressMs) : '',
+            solvedMs ? formatTimestamp(solvedMs) : '',
+            openToProgressSec !== null ? formatDuration(openToProgressSec) : '',
+            progressToSolvedSec !== null ? formatDuration(progressToSolvedSec) : '',
+            totalDurationSec !== null ? formatDuration(totalDurationSec) : '',
+            hasResp,
+            i.remarks || i.kam_remarks || ''
+        ];
+        lines.push(fields.map(csvField).join(','));
+    });
+
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `kam_performance_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('KAM performance CSV exported successfully!', 'success');
+}
+
 function renderResolutionChart() {
     const ctx = document.getElementById('resolutionChart').getContext('2d');
     const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
@@ -5814,15 +6348,17 @@ function switchView(view) {
     document.getElementById('view-pending').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
     document.getElementById('view-hub-performance').classList.add('hidden');
+    document.getElementById('view-kam-performance').classList.add('hidden');
     document.getElementById('view-performance').classList.add('hidden');
     document.getElementById('tab-tracker').classList.remove('active');
     document.getElementById('tab-pending').classList.remove('active');
     document.getElementById('tab-analytics').classList.remove('active');
     document.getElementById('tab-hub-performance').classList.remove('active');
+    document.getElementById('tab-kam-performance').classList.remove('active');
     document.getElementById('tab-performance').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`tab-${view}`).classList.add('active');
-    const titles = { tracker: 'Issue Tracker', pending: 'Pending', analytics: 'Analytics', 'hub-performance': 'HUB Performance', performance: 'Performance' };
+    const titles = { tracker: 'Issue Tracker', pending: 'Pending', analytics: 'Analytics', 'hub-performance': 'HUB Performance', 'kam-performance': 'KAM Performance', performance: 'Performance' };
     document.getElementById('page-tab-label').innerText = titles[view] || 'Issue Tracker';
     if (view === 'pending') {
         renderPendingTable();
@@ -5837,6 +6373,9 @@ function switchView(view) {
     }
     if (view === 'hub-performance') {
         renderHubMap();
+    }
+    if (view === 'kam-performance') {
+        renderKamPerformanceTab();
     }
     if (view === 'performance') {
         renderPerformanceTable();
@@ -5861,6 +6400,7 @@ function csvField(value) {
 // whichever tab's own exporter is actually on screen instead.
 function handleHeaderExportCSV() {
     if (currentView === 'hub-performance') return exportHubPerformanceCSV();
+    if (currentView === 'kam-performance') return exportKamPerformanceCSV();
     if (currentView === 'performance') return exportPerformanceCSV();
     if (currentView === 'pending') return exportCSV();
     return exportCSV();
