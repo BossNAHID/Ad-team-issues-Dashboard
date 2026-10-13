@@ -428,6 +428,7 @@ body.viewer-mode #tab-analytics,
 body.viewer-mode #tab-hub-performance,
 body.viewer-mode #tab-kam-performance,
 body.viewer-mode #tab-performance,
+body.viewer-mode #tab-call-ir,
 body.viewer-mode #tab-raise-issue,
 body.viewer-mode .hub-edit-btn {
     display: none !important;
@@ -974,6 +975,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
             <button onclick="switchView('hub-performance')" id="tab-hub-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">HUB Performance</button>
             <button onclick="switchView('kam-performance')" id="tab-kam-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">KAM Performance</button>
             <button onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
+            <button onclick="switchView('call-ir')" id="tab-call-ir" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Call IR ISSUES</button>
             <button onclick="showRaiseIssue()" id="tab-raise-issue" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
             <span class="shrink-0 w-px h-4" style="background: var(--border-color);"></span>
             <a href="https://merchant-issues-form.onrender.com/" target="_blank" rel="noopener noreferrer"
@@ -1597,6 +1599,62 @@ body.viewer-mode #modal-status-section .status-save-hint {
                     </div>
                 </div>
             </div>
+            <div id="view-call-ir" class="hidden fade-in space-y-6">
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4" id="cir-kpis"></div>
+                <div class="flex flex-col md:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--text-muted);"></i>
+                        <input id="cir-search" type="text" oninput="renderCallIR()" placeholder="Search subject, tracking ID, sender..." class="w-full pl-9 pr-3 py-2.5 rounded-lg border text-sm theme-transition" style="background-color: var(--bg-input); color: var(--text-primary); border-color: var(--border-input);">
+                    </div>
+                    <select id="cir-status" onchange="renderCallIR()" class="px-3 py-2.5 rounded-lg border text-sm theme-transition" style="background-color: var(--bg-input); color: var(--text-primary); border-color: var(--border-input);">
+                        <option value="">All statuses</option><option>Open</option><option>In Progress</option><option>Closed</option>
+                    </select>
+                    <select id="cir-sender" onchange="renderCallIR()" class="px-3 py-2.5 rounded-lg border text-sm theme-transition" style="background-color: var(--bg-input); color: var(--text-primary); border-color: var(--border-input);">
+                        <option value="">All senders</option>
+                    </select>
+                    <select id="cir-range" onchange="renderCallIR()" class="px-3 py-2.5 rounded-lg border text-sm theme-transition" style="background-color: var(--bg-input); color: var(--text-primary); border-color: var(--border-input);">
+                        <option value="0">All time</option><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option>
+                    </select>
+                    <button onclick="loadCallIR(true)" class="px-4 py-2.5 rounded-lg text-sm font-medium border flex items-center justify-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                        <i class="fa-solid fa-rotate-right" id="cir-refresh-icon"></i> Refresh
+                    </button>
+                </div>
+                <div id="cir-error" class="offline-banner hidden"></div>
+                <div class="rounded-xl border overflow-hidden theme-transition card-gradient" style="border-color: var(--border-color);">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead>
+                                <tr class="text-xs uppercase tracking-wide" style="color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+                                    <th class="px-4 py-3">Sent By</th>
+                                    <th class="px-4 py-3">Subject</th>
+                                    <th class="px-4 py-3">Sent</th>
+                                    <th class="px-4 py-3">First IR Reply</th>
+                                    <th class="px-4 py-3">Closed</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 text-right">1st Resp (h)</th>
+                                    <th class="px-4 py-3 text-right">Resolution (h)</th>
+                                    <th class="px-4 py-3 text-right">Msgs</th>
+                                    <th class="px-4 py-3">Mail</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cir-body"></tbody>
+                        </table>
+                    </div>
+                    <div id="cir-count" class="px-4 py-3 text-xs" style="color: var(--text-muted); border-top: 1px solid var(--border-color);"></div>
+                </div>
+                <div class="rounded-xl border p-4 theme-transition card-gradient" style="border-color: var(--border-color);">
+                    <h3 class="text-sm font-bold mb-3" style="color: var(--text-primary);">By sender</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead><tr class="text-xs uppercase tracking-wide" style="color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+                                <th class="px-3 py-2">Sender</th><th class="px-3 py-2 text-right">Mails</th><th class="px-3 py-2 text-right">Open</th><th class="px-3 py-2 text-right">In Progress</th><th class="px-3 py-2 text-right">Closed</th><th class="px-3 py-2 text-right">Avg 1st Resp (h)</th><th class="px-3 py-2 text-right">Avg Resolution (h)</th>
+                            </tr></thead>
+                            <tbody id="cir-summary"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div id="view-hub-performance" class="hidden fade-in space-y-6">
 
                 <div class="glass-panel rounded-xl p-4">
@@ -6368,15 +6426,17 @@ function switchView(view) {
     document.getElementById('view-hub-performance').classList.add('hidden');
     document.getElementById('view-kam-performance').classList.add('hidden');
     document.getElementById('view-performance').classList.add('hidden');
+    document.getElementById('view-call-ir').classList.add('hidden');
     document.getElementById('tab-tracker').classList.remove('active');
     document.getElementById('tab-pending').classList.remove('active');
     document.getElementById('tab-analytics').classList.remove('active');
     document.getElementById('tab-hub-performance').classList.remove('active');
     document.getElementById('tab-kam-performance').classList.remove('active');
     document.getElementById('tab-performance').classList.remove('active');
+    document.getElementById('tab-call-ir').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`tab-${view}`).classList.add('active');
-    const titles = { tracker: 'Issue Tracker', pending: 'Pending', analytics: 'Analytics', 'hub-performance': 'HUB Performance', 'kam-performance': 'KAM Performance', performance: 'Performance' };
+    const titles = { tracker: 'Issue Tracker', pending: 'Pending', analytics: 'Analytics', 'hub-performance': 'HUB Performance', 'kam-performance': 'KAM Performance', performance: 'Performance', 'call-ir': 'Call IR ISSUES' };
     document.getElementById('page-tab-label').innerText = titles[view] || 'Issue Tracker';
     if (view === 'pending') {
         renderPendingTable();
@@ -6397,6 +6457,9 @@ function switchView(view) {
     }
     if (view === 'performance') {
         renderPerformanceTable();
+    }
+    if (view === 'call-ir') {
+        loadCallIR(false);
     }
 }
 
@@ -6420,6 +6483,7 @@ function handleHeaderExportCSV() {
     if (currentView === 'hub-performance') return exportHubPerformanceCSV();
     if (currentView === 'kam-performance') return exportKamPerformanceCSV();
     if (currentView === 'performance') return exportPerformanceCSV();
+    if (currentView === 'call-ir') return exportCallIRCSV();
     if (currentView === 'pending') return exportCSV();
     return exportCSV();
 }
@@ -6471,6 +6535,150 @@ function exportCSV() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     showToast(`CSV exported successfully! (${rowsToExport.length} issue${rowsToExport.length === 1 ? '' : 's'})`, 'success');
+}
+
+
+// ========== CALL IR ISSUES ==========
+// Mirrors the "IR Tracker" sheet written by the IR Mail Tracker Apps Script
+// (issues mailed To: issue.resolution@ with CC: ad@). Read-only; separate from
+// the Issue Tracker pipeline.
+const CALL_IR_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqm9VIrY9-0DZhRgY38DrqvcXFARrdZqXE5pzzpHmdlIXhDSNwuGwelOuu77QMuqRPSrEMEnKNXynb/pub?output=csv';
+let callIRRows = [];
+let callIRLoaded = false;
+let callIRLoading = false;
+let callIRFiltered = [];
+
+function parseIRDate(str) {
+    if (!str) return null;
+    str = String(str).trim();
+    let m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/); // M/D/YYYY HH:mm:ss
+    if (m) return new Date(+m[3], +m[1] - 1, +m[2], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+    m = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i); // 13-Oct-2026 05:33 PM
+    if (m) {
+        const mon = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase());
+        let h = +m[4] % 12; if (m[6].toUpperCase() === 'PM') h += 12;
+        return new Date(+m[3], mon, +m[1], h, +m[5]);
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+}
+
+function fmtIRDate(d) {
+    if (!d) return '—';
+    const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    let h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    return `${String(d.getDate()).padStart(2, '0')} ${mon} ${d.getFullYear()}, ${h}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`;
+}
+
+function irSenderName(raw) {
+    const m = String(raw || '').match(/"?([^"<]+?)\s*(?:\/[^"<]*)?"?\s*</);
+    return (m ? m[1] : String(raw || '')).trim() || 'Unknown';
+}
+
+async function loadCallIR(force) {
+    if (callIRLoading) return;
+    if (callIRLoaded && !force) { renderCallIR(); return; }
+    callIRLoading = true;
+    const icon = document.getElementById('cir-refresh-icon');
+    if (icon) icon.classList.add('fa-spin');
+    const err = document.getElementById('cir-error');
+    try {
+        const res = await fetch(CALL_IR_CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const grid = parseCSV(await res.text());
+        const head = grid.shift().map(h => h.trim());
+        const idx = n => head.indexOf(n);
+        const c = { id: idx('Thread ID'), subj: idx('Subject'), by: idx('Sent By'), start: idx('Started At'), first: idx('First IR Reply'),
+                    closed: idx('Closed At'), status: idx('Status'), fr: idx('First Response (hrs)'), rt: idx('Resolution Time (hrs)'), msgs: idx('Messages'), link: idx('Link') };
+        if (c.id < 0 || c.status < 0) throw new Error('Unexpected columns in IR sheet');
+        callIRRows = grid.filter(r => r[c.id]).map(r => ({
+            id: r[c.id], subject: (r[c.subj] || '').trim() || '(no subject)', senderRaw: r[c.by] || '', sender: irSenderName(r[c.by]),
+            started: parseIRDate(r[c.start]), first: parseIRDate(r[c.first]), closed: parseIRDate(r[c.closed]),
+            status: (r[c.status] || '').trim() || 'Open',
+            fr: r[c.fr] !== '' && r[c.fr] != null ? parseFloat(r[c.fr]) : null,
+            rt: r[c.rt] !== '' && r[c.rt] != null ? parseFloat(r[c.rt]) : null,
+            msgs: parseInt(r[c.msgs]) || 0, link: r[c.link] || ''
+        })).sort((a, b) => (b.started || 0) - (a.started || 0));
+        callIRLoaded = true;
+        err.classList.add('hidden');
+        const sel = document.getElementById('cir-sender'), keep = sel.value;
+        sel.innerHTML = '<option value="">All senders</option>' + [...new Set(callIRRows.map(r => r.sender))].sort().map(n => `<option>${escapeHTML(n)}</option>`).join('');
+        sel.value = keep;
+    } catch (e) {
+        err.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Could not load Call IR data (' + escapeHTML(e.message) + '). Check that the IR Tracker sheet is published as CSV.';
+        err.classList.remove('hidden');
+    } finally {
+        callIRLoading = false;
+        if (icon) icon.classList.remove('fa-spin');
+        renderCallIR();
+    }
+}
+
+function irAvg(arr) { const v = arr.filter(x => x != null && !isNaN(x)); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length) : null; }
+function irH(v) { return v == null ? '—' : v.toFixed(1); }
+
+function renderCallIR() {
+    const q = (document.getElementById('cir-search').value || '').toLowerCase().trim();
+    const st = document.getElementById('cir-status').value;
+    const snd = document.getElementById('cir-sender').value;
+    const days = +document.getElementById('cir-range').value;
+    const cutoff = days ? Date.now() - days * 864e5 : 0;
+
+    const rows = callIRRows.filter(r =>
+        (!st || r.status === st) && (!snd || r.sender === snd) &&
+        (!cutoff || (r.started && r.started.getTime() >= cutoff)) &&
+        (!q || (r.subject + ' ' + r.senderRaw).toLowerCase().includes(q)));
+    callIRFiltered = rows;
+
+    const n = k => rows.filter(r => r.status === k).length;
+    const kpi = (label, val, color, sub) => `<div class="rounded-xl border p-4 theme-transition card-gradient" style="border-color: var(--border-color);">
+        <p class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-muted);">${label}</p>
+        <p class="text-3xl font-bold mt-1" style="color: ${color};">${val}</p><p class="text-xs mt-1" style="color: var(--text-muted);">${sub}</p></div>`;
+    document.getElementById('cir-kpis').innerHTML =
+        kpi('Total mails', rows.length, 'var(--text-primary)', 'To IR, CC AD') +
+        kpi('Open', n('Open'), 'var(--cb-yellow)', 'No IR reply yet') +
+        kpi('In progress', n('In Progress'), '#3b82f6', 'IR replied, not closed') +
+        kpi('Closed', n('Closed'), '#22c55e', rows.length ? Math.round(n('Closed') / rows.length * 100) + '% closed' : '—') +
+        kpi('Avg 1st response', irH(irAvg(rows.map(r => r.fr))) + (irAvg(rows.map(r => r.fr)) == null ? '' : ' h'), 'var(--text-primary)', 'Avg resolution ' + irH(irAvg(rows.map(r => r.rt))) + ' h');
+
+    const badge = s => s === 'Closed' ? 'status-resolved' : s === 'In Progress' ? 'status-progress' : 'isf-status-open';
+    document.getElementById('cir-body').innerHTML = rows.length ? rows.map(r => `
+        <tr class="hover-row" style="border-bottom: 1px solid var(--border-color);">
+            <td class="px-4 py-3 whitespace-nowrap font-medium" style="color: var(--text-primary);">${escapeHTML(r.sender)}</td>
+            <td class="px-4 py-3" style="max-width: 420px; color: var(--text-secondary);">${escapeHTML(r.subject)}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${fmtIRDate(r.started)}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${fmtIRDate(r.first)}</td>
+            <td class="px-4 py-3 whitespace-nowrap">${fmtIRDate(r.closed)}</td>
+            <td class="px-4 py-3"><span class="tag-pill ${badge(r.status)}">${escapeHTML(r.status)}</span></td>
+            <td class="px-4 py-3 text-right">${irH(r.fr)}</td>
+            <td class="px-4 py-3 text-right">${irH(r.rt)}</td>
+            <td class="px-4 py-3 text-right">${r.msgs}</td>
+            <td class="px-4 py-3">${/^https:\/\/mail\.google\.com\//.test(r.link) ? `<a href="${escapeHTML(r.link)}" target="_blank" rel="noopener noreferrer" style="color: var(--cb-yellow);" title="Open in Gmail"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : '—'}</td>
+        </tr>`).join('')
+        : `<tr><td colspan="10" class="px-4 py-10 text-center" style="color: var(--text-muted);">${callIRLoaded ? 'No IR mails match these filters.' : 'Loading…'}</td></tr>`;
+    document.getElementById('cir-count').textContent = `Showing ${rows.length} of ${callIRRows.length} mails`;
+
+    const by = {};
+    rows.forEach(r => { (by[r.sender] = by[r.sender] || []).push(r); });
+    document.getElementById('cir-summary').innerHTML = Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([name, rs]) => {
+        const c = k => rs.filter(r => r.status === k).length;
+        return `<tr style="border-bottom: 1px solid var(--border-color);"><td class="px-3 py-2 font-medium" style="color: var(--text-primary);">${escapeHTML(name)}</td>
+            <td class="px-3 py-2 text-right">${rs.length}</td><td class="px-3 py-2 text-right">${c('Open')}</td><td class="px-3 py-2 text-right">${c('In Progress')}</td><td class="px-3 py-2 text-right">${c('Closed')}</td>
+            <td class="px-3 py-2 text-right">${irH(irAvg(rs.map(r => r.fr)))}</td><td class="px-3 py-2 text-right">${irH(irAvg(rs.map(r => r.rt)))}</td></tr>`;
+    }).join('');
+}
+
+function exportCallIRCSV() {
+    if (!callIRFiltered.length) { showToast('No Call IR rows to export', 'warning'); return; }
+    const head = ['Sent By', 'Subject', 'Started At', 'First IR Reply', 'Closed At', 'Status', 'First Response (hrs)', 'Resolution Time (hrs)', 'Messages', 'Link'];
+    const lines = [head.map(csvField).join(',')].concat(callIRFiltered.map(r =>
+        [r.sender, r.subject, fmtIRDate(r.started), r.first ? fmtIRDate(r.first) : '', r.closed ? fmtIRDate(r.closed) : '', r.status, r.fr ?? '', r.rt ?? '', r.msgs, r.link].map(csvField).join(',')));
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `call-ir-issues-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function showToast(message, type) {
