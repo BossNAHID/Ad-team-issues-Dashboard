@@ -33,6 +33,18 @@ A beautiful, dark/light mode issue tracker that reads from Google Sheets.
 ### How to Use
 Simply open `index.html` in any modern browser. No server needed!
 
+### Frontend performance
+- Tailwind is precompiled into `assets/tailwind.min.css`; the browser no longer downloads and runs the Tailwind CDN compiler on every visit.
+- Chart.js is vendored locally, pinned to v4.6.1, and loaded only when an Analytics or HUB Performance chart is actually opened.
+- Hidden chart views are marked dirty instead of being rebuilt on every refresh or status change.
+- Fonts use `font-display: swap`, external origins are preconnected, and the top-level CSS is preloaded.
+
+After changing Tailwind classes in `index.html` or `isf-form.js`, regenerate the stylesheet with:
+
+```bash
+./scripts/build-css.sh
+```
+
 ---
 
 ## 🤖 Telegram Reminder Bot

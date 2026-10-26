@@ -3,9 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="CarryBee Stringer Alert dashboard for issue tracking, escalation, and performance reporting.">
+<meta name="theme-color" content="#333132">
 <title>CarryBee | Stringer Alert</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.maateen.me" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" href="assets/tailwind.min.css" as="style">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.maateen.me/adorsho-lipi/font.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,13 +20,13 @@
     font-family: 'Gilroy';
     src: url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Regular.woff2') format('woff2'),
          url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Regular.woff') format('woff');
-    font-weight: 400; font-style: normal;
+    font-weight: 400; font-style: normal; font-display: swap;
 }
 @font-face {
     font-family: 'Gilroy';
     src: url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Bold.woff2') format('woff2'),
          url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Bold.woff') format('woff');
-    font-weight: 700; font-style: normal;
+    font-weight: 700; font-style: normal; font-display: swap;
 }
 :root {
     --cb-yellow: #FFCC00;
@@ -866,6 +872,9 @@ body.viewer-mode #modal-status-section .status-save-hint {
     .login-card { width: 86vw; max-width: 320px; }
 }
 </style>
+<!-- Prebuilt from the exact Tailwind v3.4.17 classes used by index.html and
+     isf-form.js. Kept after the custom stylesheet to preserve the cascade. -->
+<link rel="stylesheet" href="assets/tailwind.min.css">
 </head>
 <body>
 
@@ -918,7 +927,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
     <main class="flex-1 flex flex-col overflow-hidden relative">
         <header class="min-h-16 py-2.5 border-b flex items-center justify-between px-4 md:px-8 backdrop-blur-sm z-10 theme-transition" style="background-color: var(--bg-header); border-color: var(--border-color);">
             <div class="flex items-center gap-3 min-w-0">
-                <img src="carrybee-logo.png" alt="CarryBee" class="logo-img hidden md:block" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27140%27%20height=%2728%27%3E%3Crect%20width=%27140%27%20height=%2728%27%20rx=%276%27%20fill=%27%23FFCC00%27/%3E%3Ctext%20x=%2770%27%20y=%2719%27%20font-family=%27Arial%27%20font-size=%2714%27%20font-weight=%27bold%27%20fill=%27%23333132%27%20text-anchor=%27middle%27%3ECB%3C/text%3E%3C/svg%3E';">
+                <img src="carrybee-logo.png" alt="CarryBee" width="74" height="28" decoding="async" class="logo-img hidden md:block" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27140%27%20height=%2728%27%3E%3Crect%20width=%27140%27%20height=%2728%27%20rx=%276%27%20fill=%27%23FFCC00%27/%3E%3Ctext%20x=%2770%27%20y=%2719%27%20font-family=%27Arial%27%20font-size=%2714%27%20font-weight=%27bold%27%20fill=%27%23333132%27%20text-anchor=%27middle%27%3ECB%3C/text%3E%3C/svg%3E';">
                 <div class="min-w-0">
                 <h2 id="page-title" class="text-xl font-bold theme-transition truncate brand-glow leading-tight" style="color: var(--text-primary);">Stringer Alert</h2>
                 <p id="page-tab-label" class="text-xs font-semibold theme-transition truncate leading-tight" style="color: var(--cb-yellow);">Issue Tracker</p>
@@ -968,33 +977,16 @@ body.viewer-mode #modal-status-section .status-save-hint {
                 </div>
             </div>
         </header>
-        <div id="topTabs" class="flex items-center justify-center gap-4 overflow-x-auto px-4 md:px-8 theme-transition" style="background-color: var(--bg-header); border-bottom: 1px solid var(--border-color);">
-            <button onclick="switchView('tracker')" id="tab-tracker" class="mobile-tab-item active shrink-0 py-2.5 text-sm font-medium">Issue Tracker</button>
-            <button onclick="switchView('pending')" id="tab-pending" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Pending</button>
-            <button onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
-            <button onclick="switchView('hub-performance')" id="tab-hub-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">HUB Performance</button>
-            <button onclick="switchView('kam-performance')" id="tab-kam-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">KAM Performance</button>
-            <button onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
-            <button onclick="switchView('call-ir')" id="tab-call-ir" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Call IR ISSUES</button>
-            <button onclick="showRaiseIssue()" id="tab-raise-issue" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
-            <span class="shrink-0 w-px h-4" style="background: var(--border-color);"></span>
-            <a href="https://merchant-issues-form.onrender.com/" target="_blank" rel="noopener noreferrer"
-                class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium inline-flex items-center gap-1.5" title="Opens in a new tab">
-                Issue Escalation Form <i class="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-70"></i>
-            </a>
-            <a href="https://beeacon-ad-dod.onrender.com/" target="_blank" rel="noopener noreferrer"
-                class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium inline-flex items-center gap-1.5" title="Opens in a new tab">
-                Beeacon <i class="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-70"></i>
-            </a>
-            <a href="https://ad-crm-l742.onrender.com/" target="_blank" rel="noopener noreferrer"
-                class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium inline-flex items-center gap-1.5" title="Opens in a new tab">
-                Flight Log <i class="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-70"></i>
-            </a>
-            <a href="https://waypoint-kwr4.onrender.com/" target="_blank" rel="noopener noreferrer"
-                class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium inline-flex items-center gap-1.5" title="Opens in a new tab">
-                Waypoint <i class="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-70"></i>
-            </a>
-        </div>
+        <nav id="topTabs" aria-label="Dashboard sections" class="flex items-center justify-center gap-4 overflow-x-auto px-4 md:px-8 theme-transition" style="background-color: var(--bg-header); border-bottom: 1px solid var(--border-color);">
+            <button type="button" onclick="switchView('tracker')" id="tab-tracker" class="mobile-tab-item active shrink-0 py-2.5 text-sm font-medium">Issue Tracker</button>
+            <button type="button" onclick="switchView('pending')" id="tab-pending" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Pending</button>
+            <button type="button" onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
+            <button type="button" onclick="switchView('hub-performance')" id="tab-hub-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">HUB Performance</button>
+            <button type="button" onclick="switchView('kam-performance')" id="tab-kam-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">KAM Performance</button>
+            <button type="button" onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
+            <button type="button" onclick="switchView('call-ir')" id="tab-call-ir" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Call IR ISSUES</button>
+            <button type="button" onclick="showRaiseIssue()" id="tab-raise-issue" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
+        </nav>
         <div class="flex-1 overflow-y-auto p-4 md:p-8 relative" id="main-content">
             <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center z-20 theme-transition" style="background-color: var(--bg-body);">
                 <div class="loader-stage">
@@ -2230,6 +2222,39 @@ function canUseIsf() {
 
 let currentUser = null;
 
+// Chart.js is only needed by Analytics / HUB Performance. Loading it on
+// demand keeps ~200 KB of charting code out of the initial dashboard and
+// login-page bundle. The local file is the same pinned 4.6.1 UMD build the
+// CDN served, but it works without another third-party connection.
+const CHART_JS_URL = 'assets/vendor/chart.umd.min.js';
+let chartJsPromise = null;
+let chartJsErrorShown = false;
+
+function loadChartJs() {
+    if (window.Chart) return Promise.resolve();
+    if (!chartJsPromise) {
+        chartJsPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = CHART_JS_URL;
+            script.async = true;
+            script.onload = () => window.Chart
+                ? resolve()
+                : reject(new Error('Chart.js loaded without a global Chart object'));
+            script.onerror = () => reject(new Error('Chart.js could not be loaded'));
+            document.head.appendChild(script);
+        }).catch(error => {
+            chartJsPromise = null; // allow a retry the next time a chart view opens
+            console.error('[Charts]', error);
+            if (!chartJsErrorShown) {
+                chartJsErrorShown = true;
+                showToast('Charts could not be loaded. Please refresh and try again.', 'error');
+            }
+            throw error;
+        });
+    }
+    return chartJsPromise;
+}
+
 function checkAuth() {
     const saved = localStorage.getItem('carrybee-user');
     if (saved) {
@@ -2394,7 +2419,14 @@ function toggleTheme() {
     setTimeout(() => {
         Object.values(charts).forEach(c => { if(c) { c.destroy(); } });
         charts = {};
-        updateAnalytics();
+        // Re-render only charts the user can actually see. Hidden views are
+        // marked dirty and rebuilt when their tab is opened.
+        analyticsDirty = true;
+        if (!document.getElementById('view-analytics').classList.contains('hidden')) {
+            updateAnalytics();
+        } else if (!document.getElementById('view-hub-performance').classList.contains('hidden')) {
+            renderHubMap();
+        }
     }, 300);
 }
 
@@ -3291,7 +3323,10 @@ async function fetchData(silent = false) {
     rebuildResponderAndHubFilterOptions();
     rebuildHubPerfTagFilterOptions();
     renderTable();
-    updateAnalytics();
+    // Charts are expensive and hidden on most tabs. Mark them dirty here and
+    // let switchView('analytics') build them only when the user opens that tab.
+    analyticsDirty = true;
+    if (!document.getElementById('view-analytics').classList.contains('hidden')) updateAnalytics();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
     if (!document.getElementById('view-hub-performance').classList.contains('hidden')) renderHubMap();
     if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
@@ -4592,10 +4627,7 @@ function updateStatus(newStatus) {
     updateResponseStats();
     renderTable();
     analyticsDirty = true;
-    if (!document.getElementById('view-analytics').classList.contains('hidden')) {
-        updateAnalytics();
-        analyticsDirty = false;
-    }
+    if (!document.getElementById('view-analytics').classList.contains('hidden')) updateAnalytics();
     if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
     if (!document.getElementById('view-hub-performance').classList.contains('hidden')) renderHubMap();
@@ -5641,6 +5673,12 @@ function renderHubTodayChart() {
     if (emptyEl) emptyEl.classList.toggle('hidden', hubs.length !== 0);
     if (charts.hubToday) { charts.hubToday.destroy(); charts.hubToday = null; }
     if (!hubs.length) return;
+    if (!window.Chart) {
+        loadChartJs().then(() => {
+            if (window.Chart && document.body.contains(canvas) && !charts.hubToday) renderHubTodayChart();
+        }).catch(() => {});
+        return;
+    }
     const cc = getChartColors();
     const ctx = canvas.getContext('2d');
     charts.hubToday = new Chart(ctx, {
@@ -5907,7 +5945,24 @@ function exportHubPerformanceCSV() {
     showToast('Hub performance CSV exported successfully!', 'success');
 }
 
-function updateAnalytics() { renderTagChart(); renderStatusChart(); renderTimeChart(); renderTopMerchants(); renderResolutionChart(); renderHubMap(); analyticsDirty = false; }
+function updateAnalytics() {
+    if (!window.Chart) {
+        analyticsDirty = true;
+        loadChartJs().then(() => {
+            // Multiple callers can share the same load promise; only the first
+            // one should do the (expensive) rebuild.
+            if (window.Chart && analyticsDirty) updateAnalytics();
+        }).catch(() => {});
+        return;
+    }
+    renderTagChart();
+    renderStatusChart();
+    renderTimeChart();
+    renderTopMerchants();
+    renderResolutionChart();
+    renderHubMap();
+    analyticsDirty = false;
+}
 
 function getChartColors() {
     return {
@@ -6442,7 +6497,7 @@ function switchView(view) {
         renderPendingTable();
     }
     if (view === 'analytics') {
-        if (analyticsDirty) {
+        if (analyticsDirty || !window.Chart) {
             updateAnalytics();
         } else {
             setTimeout(() => { Object.values(charts).forEach(c => { if(c) c.resize(); }); }, 100);
@@ -6768,6 +6823,6 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 </script>
-<script src="isf-form.js"></script>
+<script src="isf-form.js" defer></script>
  </body>
 </html>
